@@ -6,23 +6,9 @@
 
 {
   imports =
-    [ # Include the results of the hardware scan.
-      ./hardware-configuration.nix
-      # Intel+Nvidia config from https://github.com/NixOS/nixos-hardware/tree/master/dell/xps/15-9560
-      ./xps9560/dell/xps/15-9560
-      # HomeManager import and all its configs
-      ./home-manager.nix
-      # Fusuma touchpad congif (currently in home-manager.nix)
-#      ./fusuma.nix
-      # Other stuff
-#      ./steam.nix #steam
-      ./onedrive.nix # onedrive sync
-      ./vpn.nix # VPN
-#      ./wireguard.nix # Wireguard
-      ./audio.nix # all audio config
-      ./sonarr.nix # Sonarr
-      ./vm.nix
-#      ./vscode.nix #non ho tempo di farlo andare declaratively goddamnix
+    [
+      ./hardware-configuration.nix # XPS 9570 default config
+      ./xps9560/dell/xps/15-9560 # Intel+Nvidia config from https://github.com/NixOS/nixos-hardware/tree/master/dell/xps/15-9560 (working on 9570)
     ];
 
   # Bootloader.
@@ -32,6 +18,9 @@
 
   # NTFS support
   boot.supportedFilesystems = ["ntfs"];
+
+  # Force Nix to be stable (https://discourse.nixos.org/t/sudo-nixos-rebuild-switch-upgrade-does-not-get-updates-anymore/27072/9)
+  nix.package = pkgs.nixStable;
 
   # Setup keyfile
   boot.initrd.secrets = {
@@ -94,6 +83,10 @@
   # Enable CUPS to print documents.
   services.printing.enable = true;
 
+  # enable core dumps - https://github.com/NixOS/nixpkgs/issues/60088
+  systemd.coredump.enable = true;
+  systemd.coredump.extraConfig = "Storage=./journal";
+
   # Enable touchpad support (enabled default in most desktopManager).
   # services.xserver.libinput.enable = true;
 
@@ -107,12 +100,14 @@
       wget
       unrar
       xarchiver
-      baobab
-      gparted
+#      git #--> in home-manager.nix
+      github-desktop
+      #baobab
+      #gparted
       # WRITE:
       kate
-      emacs
-      vscode.fhs #--> in vscode.nix with extensions ##ehh ti piacerebbe, usiamo fhs e ciao
+#      emacs
+#      vscode #--> in vscode.nix with extensions
       zotero
       # BROWSERS:
       brave
@@ -127,7 +122,7 @@
       tdesktop
       # ENTERTAINMENT:
       vlc
-      plex-media-player
+#      plex-media-player #--> plex.nix
 #      audacity
 #      pulseaudio #--> in audio.nix
     ];
@@ -135,11 +130,17 @@
 
   # Allow various unfree packages (nvidia)
   nixpkgs.config.allowUnfree = true;
+  nixpkgs.config.nvidia.acceptLicense = true;
 
   # List packages installed in system profile. To search, run: nix search wget
   environment.systemPackages = with pkgs; [
     #  vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
     #  wget
+  ];
+
+  # Fonts
+  fonts.fonts = with pkgs; [
+    iosevka
   ];
 
   # Some programs need SUID wrappers, can be configured further or are
@@ -168,5 +169,7 @@
   # Before changing this value read the documentation for this option
   # (e.g. man configuration.nix or on https://nixos.org/nixos/options.html).
   system.stateVersion = "22.11"; # Did you read the comment?
+
+  nix.settings.experimental-features = [ "nix-command" "flakes" ];
 
 }

@@ -12,7 +12,7 @@ in
     package = pkgs.onedrive;
   };
   systemd.services.onedrive.serviceConfig = {
-    ExecStart = "${pkgs.onedrive}/bin/onedrive --monitor --confdir ${config.users.users.${username}.home}/.config/onedrive";    
+    ExecStart = "${pkgs.onedrive}/bin/onedrive --monitor --monitor-interval 60 --confdir ${config.users.users.${username}.home}/.config/onedrive";    
   };
 }
 
