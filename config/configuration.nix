@@ -2,13 +2,27 @@
 # your system.  Help is available in the configuration.nix(5) man page
 # and in the NixOS manual (accessible by running ‘nixos-help’).
 
-{ config, pkgs, ... }:
+{ config, pkgs, options, lib, ... }:
 
 {
   imports =
     [
       ./hardware-configuration.nix # XPS 9570 default config
       ./xps9560/dell/xps/15-9560 # Intel+Nvidia config from https://github.com/NixOS/nixos-hardware/tree/master/dell/xps/15-9560 (working on 9570)
+    #  ./variables.nix
+#       ./fusuma.nix # Fusuma touchpad congif (TODO)
+       ./audio.nix # all audio config
+       ./onedrive.nix # OneDrive sync
+       ./syncthing.nix # Syncthing sync
+       ./vscode.nix # VSCode app and extensions
+       ./vpn.nix # VPN / Wireguard
+#       ./steam.nix # Steam
+       ./vm.nix # Virtual machine
+       ./docker.nix # lato oscuro
+       ./orbslam3.nix # keep opencv+gtk2 in the system to prevent its deletion+rebuild every time
+       ./matlab.nix
+       ./sonarr.nix # Sonarr
+       ./plex.nix # Plex player
     ];
 
   # Bootloader.
@@ -20,7 +34,7 @@
   boot.supportedFilesystems = ["ntfs"];
 
   # Force Nix to be stable (https://discourse.nixos.org/t/sudo-nixos-rebuild-switch-upgrade-does-not-get-updates-anymore/27072/9)
-  nix.package = pkgs.nixStable;
+#  nix.package = pkgs.nixStable;
 
   # Setup keyfile
   boot.initrd.secrets = {
@@ -85,7 +99,7 @@
 
   # enable core dumps - https://github.com/NixOS/nixpkgs/issues/60088
   systemd.coredump.enable = true;
-  systemd.coredump.extraConfig = "Storage=./journal";
+  #systemd.coredump.extraConfig = "Storage=/home/facc/core";
 
   # Enable touchpad support (enabled default in most desktopManager).
   # services.xserver.libinput.enable = true;
@@ -139,7 +153,7 @@
   ];
 
   # Fonts
-  fonts.fonts = with pkgs; [
+  fonts.packages = with pkgs; [
     iosevka
   ];
 

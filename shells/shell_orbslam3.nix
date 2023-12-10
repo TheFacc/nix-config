@@ -1,0 +1,46 @@
+{ pkgs ? import <nixpkgs> {} }:
+
+let
+
+  # gcc 13.2.0 - out-of-bounds "errors" in Sophus/Eigen compilation using gcc12+ (it was fine with gcc11), but still works
+  pk3 = import (fetchTarball "https://github.com/NixOS/nixpkgs/archive/517501bcf14ae6ec47efd6a17dda0ca8e6d866f9.tar.gz") {};
+
+  # opencv 4.6.0 (+ flag to enable gtk2)
+  pk1 = import (fetchTarball "https://github.com/NixOS/nixpkgs/archive/79b3d4bcae8c7007c9fd51c279a8a67acfa73a2a.tar.gz") {};
+
+  # eigen 3.4.0, pangolin 0.6
+  pk2 = import (fetchTarball "https://github.com/NixOS/nixpkgs/archive/1a1bd86756ca15f8bafdce4499d6a88089bec3b6.tar.gz") {};
+
+  # python + numpy
+#  my-python-packages = python-packages: with python-packages; [
+#    numpy
+    #(opencv4.override {enableGtk2 = true;} ) # either this or the package pk1 above (or both) work!!
+#  ];
+#  python-with-my-packages = pkgs.python310.withPackages my-python-packages;
+
+in
+
+  pkgs.mkShell {
+    shellHook =
+        ''
+        echo "Entering the shell tailored to work with ORB-SLAM3 package."
+        cd "/home/facc/OneDrive/5.2_PACS/22-23/Proj/SLAMoCaDO"
+#        echo "Launching VSCode in project dir."
+#        code .
+        '';
+    buildInputs = [
+      (pk1.opencv4.override (old : { enableGtk2 = true; }))
+      pk2.eigen
+      pk2.pangolin
+      pk3.gcc11
+      pk3.cmake
+      pk3.gnumake
+      pk3.gdb
+      pk3.boost #
+      pk3.glew # (glew.h)
+      pk3.libGLU # (glu.h)
+      pk3.libGL # (gl.h)
+      pk3.openssl # (md5.h)
+#      python-with-my-packages
+    ];
+}

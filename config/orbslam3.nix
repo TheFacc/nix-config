@@ -2,7 +2,7 @@
 let
 
   # opencv 4.6.0 + gtk2 enabled
-  pk1 = import (fetchTarball "https://github.com/NixOS/nixpkgs/archive/79b3d4bcae8c7007c9fd51c279a8a67acfa73a2a.tar.gz") {};
+  pk1 = import (fetchTarball "https://github.com/NixOS/nixpkgs/archive/79b3d4bcae8c7007c9fd51c279a8a67acfa73a2a.tar.gz") {}; #sha256="sha256:1lsrlgx4rg2wqxrz5j7kzsckgk4ymvr1l77rbqm1zxap6hg07dxf"
 
   # pangolin 0.6, eigen 3.4.0
 #  pk2 = import (fetchTarball "https://github.com/NixOS/nixpkgs/archive/1a1bd86756ca15f8bafdce4499d6a88089bec3b6.tar.gz") {};
