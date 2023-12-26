@@ -134,6 +134,7 @@
 #      qbittorrent #--> in sonarr.nix
       # SOCIAL:
       tdesktop
+      beeper
       # ENTERTAINMENT:
       vlc
 #      plex-media-player #--> plex.nix
