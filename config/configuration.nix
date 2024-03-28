@@ -10,7 +10,7 @@
       ./hardware-configuration.nix # XPS 9570 default config
       ./xps9560/dell/xps/15-9560 # Intel+Nvidia config from https://github.com/NixOS/nixos-hardware/tree/master/dell/xps/15-9560 (working on 9570)
     #  ./variables.nix
-#       ./fusuma.nix # Fusuma touchpad congif (TODO)
+       ./home-manager.nix # User config
        ./audio.nix # all audio config
        ./onedrive.nix # OneDrive sync
        ./syncthing.nix # Syncthing sync
@@ -115,9 +115,9 @@
       unrar
       xarchiver
 #      git #--> in home-manager.nix
-      github-desktop
       #baobab
       #gparted
+      #anydesk
       # WRITE:
       kate
 #      emacs
@@ -134,11 +134,11 @@
 #      qbittorrent #--> in sonarr.nix
       # SOCIAL:
       tdesktop
-      beeper
+#      beeper
       # ENTERTAINMENT:
       vlc
 #      plex-media-player #--> plex.nix
-#      audacity
+#      audacity #--> in audio.nix
 #      pulseaudio #--> in audio.nix
     ];
   };
@@ -156,6 +156,12 @@
   # Fonts
   fonts.packages = with pkgs; [
     iosevka
+    inter
+    lato
+    inconsolata
+    liberation_ttf
+    fira
+    fira-code
   ];
 
   # Some programs need SUID wrappers, can be configured further or are
@@ -170,6 +176,9 @@
 
   # Enable the OpenSSH daemon.
   # services.openssh.enable = true;
+
+  # Kill process eating RAM to prevent system hang
+  services.earlyoom.enable = true;
 
   # Open ports in the firewall.
   # networking.firewall.allowedTCPPorts = [ ... ];
