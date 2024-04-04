@@ -11,6 +11,7 @@
     # common/optional/sops.nix
     # common/optional/helper-scripts
 
+    # common/optional/desktops/plasma.nix # TODO: make plasma-manager work
     # common/optional/desktops/gtk.nix
 
     # Browsers
@@ -28,10 +29,13 @@
     common/optional/services/onedrive.nix 
     common/optional/services/arr.nix 
 
+    # Entertainment
+    ../common/optional/mpv.nix
+    ../common/optional/vlc.nix
     # common/optional/games/steam.nix
   ];
 
-  nixpkgs.config = {
+  config.nixpkgs.config = {
     allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) outputs.allowed-unfree-packages;
   };
 }

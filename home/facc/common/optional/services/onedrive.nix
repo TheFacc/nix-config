@@ -6,6 +6,7 @@
         !/5.2_PACS/22-23/dont_sync
         !/5.2_PACS/22-23/Lectures
         !/5.2_PACS/22-23/Challenges
+        !/5.2_PACS/22-23/Proj/Datasets
         !/5.2_PACS/22-23/Proj/ORB_SLAM3_Lux
         !/5.2_PACS/22-23/Proj/SLAMoCaDO/.git
         !/5.2_PACS/22-23/Proj/SLAMoCaDO/.cache

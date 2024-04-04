@@ -39,17 +39,34 @@
 
 
 
-    # TODO Packages that should be in /home instead of /hosts
+    # TODO Packages that should ideally be in /home instead of /hosts or stuff to fix idk
     ../common/optional/comms/telegram.nix
     ../common/optional/plex/player.nix
     # ../common/optional/plex/server.nix
+    ../common/optional/opencv.nix
+    ../common/optional/clangd.nix
 
 
     #################### Users to Create ####################
     ../common/users/facc 
-    
   ];
 
+  # By default, nixos-hardware uses nvidia in prime-offload mode.
+  # This causes some issues with an external monitor that is directly connected to the gpu,
+  # so we create a prime-sync specialization (more battery but ok at home)
+  # (fyi seems to be broken with wayland currently, cant login)
+  specialisation = {
+    prime-sync.configuration = {
+      system.nixos.tags = [ "prime-sync" ];
+      hardware.nvidia = {
+        prime.offload.enable = lib.mkForce false;
+        prime.offload.enableOffloadCmd = lib.mkForce false;
+        prime.sync.enable = lib.mkForce true;
+      };
+    };
+    #TODO no-gpu.specialisation = ... # super battery mode? still i9 lol
+  };
+  plasma6.enable = true;
   arrs.enable = true; #TODO add other arrs with their enables, set default
 
   networking.hostName = "nixossone";

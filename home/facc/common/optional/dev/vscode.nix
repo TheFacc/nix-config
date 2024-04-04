@@ -1,5 +1,6 @@
 # { system ? builtins.currentSystem, inputs, config, pkgs, ... }:
 # { outputs, ... }:
+# should we include this? https://github.com/NixOS/nixpkgs/commit/b2eb5f62a7fd94ab58acafec9f64e54f97c508a6
 let
   # system = outputs.system; #TODO inherit system somehow
   system = "x86_64-linux";
@@ -26,7 +27,7 @@ let
 #          ms-vscode.cpptools-themes
         # ms-vscode.makefile-tools # broken?? cant switch
           # - Clangd:
-          llvm-vs-code-extensions.vscode-clangd
+          llvm-vs-code-extensions.vscode-clangd # requires pkgs.llvmPackages_17.clang-unwrapped
           # - CMake:
           twxs.cmake
           # ms-vscode.cmake-tools # derivation fails to build with v1.86.2 as of 17-feb-24
@@ -71,6 +72,4 @@ in
       # package = pkgs.vscodium;
       extensions = extensionsList ++ extCopilotChat;
     };
-    # Packages required by Clangd extension:
-#       pkgs.llvmPackages_17.clang-unwrapped
 }
