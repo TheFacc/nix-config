@@ -22,7 +22,7 @@
     ../common/optional/pipewire.nix # audio
     # ../common/optional/smbclient.nix # mount the ghost mediashare
     ../common/optional/vlc.nix
-    ../common/optional/mpv.nix
+    # ../common/optional/mpv.nix #--> home-manager
 
     #################### Users to Create ####################
     ../common/users/facc

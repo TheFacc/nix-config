@@ -31,7 +31,7 @@
 
     # Entertainment
     ../common/optional/mpv.nix
-    ../common/optional/vlc.nix
+    # ../common/optional/vlc.nix # --> env package
     # common/optional/games/steam.nix
   ];
 
