@@ -5,7 +5,8 @@
     ./nix.nix # nix settings and garbage collection
     # ./sops.nix # secrets management
     ./zsh.nix # load a basic shell just in case we need it without home-manager
-
+    ./1.1.1.1.nix # cloudflare dns
+    
     # ./services/auto-upgrade.nix # auto-upgrade service
 
   ] ;#++ (builtins.attrValues outputs.nixosModules);
