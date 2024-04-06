@@ -11,10 +11,9 @@
   users.users.campiglio = {
     isNormalUser = true;
     # hashedPasswordFile = config.sops.secrets.campiglio-password.path;
-    shell = pkgs.zsh; #default shell
     extraGroups = [
-      "audio"
-      "video"
+      # "audio"
+      # "video"
     ];
 
     packages = [ pkgs.home-manager ];

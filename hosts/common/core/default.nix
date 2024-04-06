@@ -9,7 +9,7 @@
     
     # ./services/auto-upgrade.nix # auto-upgrade service
 
-  ] ;#++ (builtins.attrValues outputs.nixosModules);
+  ] ++ (builtins.attrValues outputs.nixosModules);
 
   home-manager.extraSpecialArgs = { inherit inputs outputs; };
 

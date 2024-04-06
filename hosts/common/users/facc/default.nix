@@ -18,6 +18,7 @@ in
       "audio"
       "video"
     ] ++ ifTheyExist [
+      "media"
       "docker"
       "git"
       "mysql"

@@ -71,6 +71,7 @@
       "nvidia-settings"
       "nvidia-persistenced"
       "vscode"
+      "plexmediaserver"
     ];
     system = "x86_64-linux";
     # flake-overlays = [
@@ -80,7 +81,7 @@
   {
     inherit lib allowed-unfree-packages; # TODO needed to call outputs.allowed-unfree-packages, how to use outputs.allowed-unfree-packages directly?
     # Custom modules to enable special functionality for nixos or home-manager oriented configs.
-    # nixosModules = import ./modules/nixos;
+    nixosModules = import ./modules/nixos;
     # homeManagerModules = import ./modules/home-manager;
 
     # Custom modifications/overrides to upstream packages.
