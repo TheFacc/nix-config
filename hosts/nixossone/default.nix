@@ -35,17 +35,14 @@
     # ../common/optional/services/greetd.nix # display manager
     # ../common/optional/hyprland.nix # window manager
     ../common/optional/services/onedrive.nix # onedrive for linux
-    ../common/optional/services/arr.nix # arr!
-
-
 
     # TODO Packages that should ideally be in /home instead of /hosts or stuff to fix idk
     ../common/optional/comms/telegram.nix
     ../common/optional/plex/player.nix
-    # ../common/optional/plex/server.nix
-    ../common/optional/opencv.nix
+    # ../common/optional/opencv.nix #TODO get older version using overlays, for now using a legacy shell
     ../common/optional/clangd.nix
 
+    ../common/optional/ios.nix
 
     #################### Users to Create ####################
     ../common/users/facc 
@@ -67,7 +64,6 @@
     #TODO no-gpu.specialisation = ... # super battery mode? still i9 lol
   };
   plasma6.enable = true;
-  arrs.enable = true; #TODO add other arrs with their enables, set default
 
   networking.hostName = "nixossone";
 
