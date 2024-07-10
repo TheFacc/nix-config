@@ -18,8 +18,9 @@ let
         # /run/current-system/sw/bin/fusermount -u ${mountDir}/Col
     rcloneMountScript = pkgs.writeScript "rclone_mount.sh" ''
         #!/bin/sh
-        /run/current-system/sw/bin/mkdir -p ${mountDir}/TV ${mountDir}/FD ${mountDir}/LM ${mountDir}/Col
+        /run/current-system/sw/bin/mkdir -p ${mountDir}/TV ${mountDir}/DJ ${mountDir}/FD ${mountDir}/LM ${mountDir}/Col
         ${pkgs.rclone}/bin/rclone mount One1_TV:mainet ${mountDir}/TV ${mountFlags} --log-file=${mountDir}/rlog_TV.txt --daemon
+        ${pkgs.rclone}/bin/rclone mount One1_DJ:mainet ${mountDir}/DJ ${mountFlags} --log-file=${mountDir}/rlog_DJ.txt --daemon
         ${pkgs.rclone}/bin/rclone mount One1_FD:mainet ${mountDir}/FD ${mountFlags} --log-file=${mountDir}/rlog_FD.txt --daemon
         ${pkgs.rclone}/bin/rclone mount One1_LM:mainet ${mountDir}/LM ${mountFlags} --log-file=${mountDir}/rlog_LM.txt --daemon
         ${pkgs.rclone}/bin/rclone mount One1_Col:mainet ${mountDir}/Col ${mountFlags} --log-file=${mountDir}/rlog_Col.txt
@@ -28,6 +29,7 @@ let
     rcloneUnmountScript = pkgs.writeScript "rclone_unmount.sh" ''
         #!/bin/sh
         /run/current-system/sw/bin/fusermount -u ${mountDir}/TV;
+        /run/current-system/sw/bin/fusermount -u ${mountDir}/DJ;
         /run/current-system/sw/bin/fusermount -u ${mountDir}/FD;
         /run/current-system/sw/bin/fusermount -u ${mountDir}/LM;
         /run/current-system/sw/bin/fusermount -u ${mountDir}/Col

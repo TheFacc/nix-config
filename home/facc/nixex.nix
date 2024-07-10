@@ -9,6 +9,6 @@
     # common/optional/helper-scripts
 
     # common/optional/desktops/gtk.nix
-    common/optional/browsers/brave.nix # for testing against 'campiglio' user
+#     common/optional/browsers/brave.nix # for testing against 'campiglio' user
   ];
 }

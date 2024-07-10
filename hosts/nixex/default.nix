@@ -9,7 +9,7 @@
   imports = [
     #################### Hardware Modules ####################
     inputs.hardware.nixosModules.common-cpu-intel
-    inputs.hardware.nixosModules.common-gpu-intel
+   # inputs.hardware.nixosModules.common-gpu-intel
 
     #################### Required Configs ####################
     ../common/core
@@ -20,45 +20,72 @@
 
     ../common/optional/plasma.nix # desktop environment
     ../common/optional/pipewire.nix # audio
+    ../common/optional/kate.nix
     # play
     ../common/optional/vlc.nix
     # ../common/optional/mpv.nix #--> home-manager
-    # ../common/optional/plex/player.nix #TODO
+    ../common/optional/plex/player.nix #TODO make declarative
     # share
     ../common/optional/plex/server.nix
-    # ../common/optional/plex/tautulli.nix #TODO
+    ../common/optional/plex/tautulli.nix
+    ../common/optional/services/jellyfin.nix #TODO config and replace plex
     ../common/optional/services/rclone.nix
     ../common/optional/services/arr.nix
-    # ../common/optional/services/transmission.nix # jee its terrible
     ../common/optional/services/qbittorrent.nix
+    ../common/optional/services/tailscale.nix
+    inputs.nur.nixosModules.nur
+#     inputs.nur.hmModules.nur
 
     #################### Users to Create ####################
     ../common/users/facc
     ../common/users/campiglio
   ];
-  # Set plasma5 to stay stable
-  plasma5.enable = true;
+  plasma6.enable = true;
 
-  # Enable Arr!
+  # Enable Arr! #TODO make modular here maybe uhm
   # arrs.enable = true;
 
   # Enable some basic X server options
   services.xserver = {
     enable = true;
-    displayManager = {
-      # lightdm.enable = true;
-      autoLogin.enable = true;
-      autoLogin.user = "campiglio";
-    };
     xkb.layout = "it";
     xkb.variant = "";
   };
   # console.keymap = "it2";
+#   services.xserver.displayManager = {
+# #     # lightdm.enable = true;
+# #     autoLogin.enable = true;
+# #     autoLogin.user = "campiglio";
+#     gdm.autoSuspend = false;
+#   };
 
   networking = {
     hostName = "nixex";
     networkmanager.enable = true;
+#     interfaces = { # ifconfig
+#       wlp1s0 = {
+#         ipv4.addresses = [{
+#           address = "192.168.100.18";
+#           prefixLength = 24;
+#         }];
+#       };
+#     };
+#     defaultGateway = "192.168.100.1";
     enableIPv6 = false;
+  };
+
+  # No sleep! -- not sure what is required here, but ALSO disable screen-off entirely from settings (#TODO declarative with plasma-manager)
+  systemd.targets = {
+    sleep.enable = false;
+    suspend.enable = false;
+    hibernate.enable = false;
+    hybrid-sleep.enable = false;
+  };
+  powerManagement.enable = false;
+  services.xserver.displayManager.gdm.autoSuspend = false;
+  services.logind = {
+    lidSwitch = "ignore";
+    extraConfig = "IdleAction=ignore";
   };
 
   users.groups.media = {};
@@ -77,5 +104,5 @@
 
 
   # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
-  system.stateVersion = "23.11";
+  system.stateVersion = "24.05";
 }

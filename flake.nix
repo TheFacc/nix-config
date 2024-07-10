@@ -5,6 +5,7 @@
     # NixOS package sources
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";#release-23.11"
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
+    nur.url = "github:nix-community/NUR";
 
     # NixOS hardware packages
     hardware.url = "github:nixos/nixos-hardware";
@@ -14,12 +15,12 @@
       url = "github:nix-community/home-manager";#/release-23.11";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    # Plasma-manager for managing KDE Plasma declaratively
-    plasma-manager = {
-      url = "github:pjones/plasma-manager";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.home-manager.follows = "home-manager";
-    };
+#     # Plasma-manager for managing KDE Plasma declaratively # TODO
+#     plasma-manager = {
+#       url = "github:pjones/plasma-manager";
+#       inputs.nixpkgs.follows = "nixpkgs";
+#       inputs.home-manager.follows = "home-manager";
+#     };
 
     # MATLAB
     nix-matlab = {
@@ -41,7 +42,7 @@
 
   };
 
-  outputs = { self, nixpkgs, home-manager, plasma-manager, nix-matlab, ... }@inputs:
+  outputs = { self, nixpkgs, nur, home-manager, nix-matlab, ... }@inputs:
   let
     inherit (self) outputs;
     lib = nixpkgs.lib // home-manager.lib;
@@ -113,7 +114,7 @@
       # main workstation
       "facc@nixossone" = lib.homeManagerConfiguration {
         modules = [
-          inputs.plasma-manager.homeManagerModules.plasma-manager
+#           inputs.plasma-manager.homeManagerModules.plasma-manager
           ./home/facc/nixossone.nix
         ];
         pkgs = pkgsFor.x86_64-linux;
