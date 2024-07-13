@@ -29,6 +29,7 @@
     ../common/optional/plex/server.nix
     ../common/optional/plex/tautulli.nix
     ../common/optional/services/jellyfin.nix #TODO config and replace plex
+    ../common/optional/services/jellyseerr.nix
     ../common/optional/services/rclone.nix
     ../common/optional/services/arr.nix
     ../common/optional/services/qbittorrent.nix
