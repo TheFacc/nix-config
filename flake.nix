@@ -73,6 +73,9 @@
       "nvidia-persistenced"
       "vscode"
       "plexmediaserver"
+      "obsidian"
+      "rar"
+      "unrar"
     ];
     system = "x86_64-linux";
     # flake-overlays = [

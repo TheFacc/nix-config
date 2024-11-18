@@ -36,9 +36,12 @@
     # ../common/optional/hyprland.nix # window manager
     ../common/optional/services/onedrive.nix # onedrive for linux
     ../common/optional/services/tailscale.nix # tailscale vpn
+    ../common/optional/docker.nix # sorry nix
     ../common/optional/virtualbox.nix # virtualbox
     ../common/optional/zotero.nix # zotero
+    ../common/optional/obsidian.nix # obsidian.md
     # ../common/optional/kdiskmark.nix # disk benchmark
+    ../common/optional/rar.nix # RAR archives
 
     # TODO Packages that should ideally be in /home instead of /hosts or stuff to fix idk
     ../common/optional/comms/telegram.nix
@@ -161,6 +164,7 @@
   ];
   hardware = {
     nvidia = {
+      open = true; # https://github.com/NixOS/nixpkgs/commit/43764ae2c337f5e5f6b5485a7092734f3b1fdf2d
       package = lib.mkForce config.boot.kernelPackages.nvidiaPackages.stable; # forcing beta to have 555 as of 2024-05-25 (maybe not rly forcing tho lol)
       # package = config.boot.kernelPackages.nvidiaPackages.mkDriver { # https://www.reddit.com/r/NixOS/comments/1cx9wsy/comment/l51ubth/
       #   version = "555.42.02";
