@@ -21,25 +21,27 @@
     ../common/optional/plasma.nix # desktop environment
     ../common/optional/pipewire.nix # audio
     ../common/optional/kate.nix
+
     # play
     ../common/optional/vlc.nix
     # ../common/optional/mpv.nix #--> home-manager
-    ../common/optional/plex/player.nix #TODO make declarative
+    ../common/optional/serverr/plex/player.nix #TODO make declarative
+    
     # share
-    ../common/optional/plex/server.nix
-    ../common/optional/plex/tautulli.nix
-    ../common/optional/services/jellyfin.nix #TODO config and replace plex
-    ../common/optional/services/jellyseerr.nix
-    ../common/optional/services/rclone.nix
-    ../common/optional/services/arr.nix
-    ../common/optional/services/qbittorrent.nix
+    ../common/optional/serverr/plex/server.nix
+    ../common/optional/serverr/plex/tautulli.nix
+    ../common/optional/serverr/jellyfin/jellyfin.nix
+    ../common/optional/serverr/jellyfin/jellyseerr.nix
+    ../common/optional/serverr/rclone.nix
+    ../common/optional/serverr/arr.nix
+    ../common/optional/serverr/qbittorrent.nix
     ../common/optional/services/tailscale.nix
     inputs.nur.nixosModules.nur
 #     inputs.nur.hmModules.nur
 
     #################### Users to Create ####################
     ../common/users/facc
-    ../common/users/campiglio
+    # ../common/users/campiglio
   ];
   plasma6.enable = true;
 

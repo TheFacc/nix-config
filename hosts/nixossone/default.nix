@@ -26,29 +26,46 @@
     # ../common/optional/services/openssh.nix
     ../common/optional/pipewire.nix # audio
     ../common/optional/bluetooth.nix
+    ../common/optional/ios.nix # ios file transfer support
     # ../common/optional/smbclient.nix # mount the ghost mediashare
-    ../common/optional/vlc.nix # media player
-    ../common/optional/audacity.nix # audio editor
 
     # Desktop
     ../common/optional/plasma.nix # desktop environment
     # ../common/optional/services/greetd.nix # display manager
     # ../common/optional/hyprland.nix # window manager
-    ../common/optional/services/onedrive.nix # onedrive for linux
+
+    # Services
+    # ../common/optional/services/onedrive.nix # onedrive for linux
     ../common/optional/services/tailscale.nix # tailscale vpn
     ../common/optional/docker.nix # sorry nix
     ../common/optional/virtualbox.nix # virtualbox
+
+    # Comms
+    ../common/optional/comms/telegram.nix
+
+    # Media
+    ../common/optional/vlc.nix # media player (mpv is in home config)
+    ../common/optional/audacity.nix # audio editor
+    ../common/optional/serverr/plex/player.nix # plex media player
+    ../common/optional/serverr/jellyfin/jellyfin-mpv.nix # jellyfin media player
+
+    # Notes
     ../common/optional/zotero.nix # zotero
     ../common/optional/obsidian.nix # obsidian.md
+
+    # Dev
+    ../common/optional/clangd.nix
+    ../common/optional/nixd.nix
+
+    # Tools
     # ../common/optional/kdiskmark.nix # disk benchmark
     ../common/optional/rar.nix # RAR archives
 
-    # TODO Packages that should ideally be in /home instead of /hosts or stuff to fix idk
-    ../common/optional/comms/telegram.nix
-    ../common/optional/plex/player.nix
-    ../common/optional/clangd.nix
+    # Web
+    ../common/optional/persepolis.nix # download manager (~IDM)
+    ../common/optional/dbeaver.nix # MySQL database manager
 
-    ../common/optional/ios.nix
+
 
     #################### Users to Create ####################
     ../common/users/facc 
@@ -59,22 +76,22 @@
   # so we create a prime-sync specialization (more battery but ok at home)
   # (fyi seems to be broken with wayland currently, cant login)
   specialisation = {
-    nvidiaBeta.configuration = { #TODO not sure this works like this
-      system.nixos.tags = [ "nvidia-beta" ];
-      environment.etc."specialisation".text = "nvidiaBeta";
-      hardware.nvidia = {
-        package = config.boot.kernelPackages.nvidiaPackages.beta;
-      };
-    };
-    prime-sync.configuration = {
-      system.nixos.tags = [ "prime-sync" ];
-      environment.etc."specialisation".text = "prime-sync";
-      hardware.nvidia = {
-        prime.offload.enable = lib.mkForce false;
-        prime.offload.enableOffloadCmd = lib.mkForce false;
-        prime.sync.enable = lib.mkForce true;
-      };
-    };
+    # nvidiaBeta.configuration = { #TODO not sure this works like this
+    #   system.nixos.tags = [ "nvidia-beta" ];
+    #   environment.etc."specialisation".text = "nvidiaBeta";
+    #   hardware.nvidia = {
+    #     package = config.boot.kernelPackages.nvidiaPackages.beta;
+    #   };
+    # };
+    # prime-sync.configuration = {
+    #   system.nixos.tags = [ "prime-sync" ];
+    #   environment.etc."specialisation".text = "prime-sync";
+    #   hardware.nvidia = {
+    #     prime.offload.enable = lib.mkForce false;
+    #     prime.offload.enableOffloadCmd = lib.mkForce false;
+    #     prime.sync.enable = lib.mkForce true;
+    #   };
+    # };
     # reverse-sync.configuration = {
     #   system.nixos.tags = [ "reverse-sync" ];
     #   environment.etc."specialisation".text = "reverse-sync";

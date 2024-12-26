@@ -26,7 +26,7 @@
     # common/optional/comms/telegram.nix
 
     # Services
-    common/optional/services/onedrive.nix 
+    # common/optional/services/onedrive.nix 
     # common/optional/services/arr.nix 
 
     # Entertainment
