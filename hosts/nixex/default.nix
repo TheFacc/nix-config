@@ -36,6 +36,8 @@
     ../common/optional/services/arr.nix
     ../common/optional/services/qbittorrent.nix
     ../common/optional/services/tailscale.nix
+    ../common/optional/services/syncthing-devices.nix # devices IDs
+    ../common/optional/services/syncthing-folders.nix # service and sync folders
     inputs.nur.modules.nixos.default
 
     #################### Users to Create ####################
