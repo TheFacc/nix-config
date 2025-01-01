@@ -1,7 +1,7 @@
-{ lib, config, pkgs, ... }:
+{ inputs, ... }:
 # taken from: https://github.com/nmasur/dotfiles/blob/master/modules/nixos/services/arr.nix
 # source file config example: https://github.com/DamienCassou/nixpkgs/blob/master/pkgs/servers/sonarr/default.nix
-# let
+let
 
 #   arrConfig = {
 #     prowlarr = {
@@ -15,8 +15,10 @@
 #       # apiKey = config.secrets.sonarrApiKey.dest;
 #     };
 #   };
+  system = "x86_64-linux";
+  flaresolverrPath = inputs.nur.legacyPackages.${system}.repos.xddxdd.flaresolverr-21hsmw;
 
-# in
+in
 
 {
   # options = { arrs.enable = lib.mkEnableOption "Arr services"; };
@@ -34,6 +36,7 @@
       };
       radarr = {
         enable = true;
+        openFirewall = true; # todo, to try if fixes reachabiliity from nixossone
         group = "media";
       };
     };
@@ -47,7 +50,7 @@
         Restart = "always";
         RestartSec = 5;
         TimeoutStopSec = 30;
-        ExecStart = "${config.nur.repos.xddxdd.flaresolverr}/bin/flaresolverr";
+        ExecStart = "${flaresolverrPath}/bin/flaresolverr";
       };
       wantedBy = [ "multi-user.target" ];
     };

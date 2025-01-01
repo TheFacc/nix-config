@@ -3,9 +3,8 @@
 
   inputs = {
     # NixOS package sources
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";#release-23.11"
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";#release-24.11";
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
-    nur.url = "github:nix-community/NUR";
 
     # NixOS hardware packages
     hardware.url = "github:nixos/nixos-hardware";
@@ -33,6 +32,12 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # Nix User Repository
+    nur = {
+      url = "github:nix-community/NUR";
+      inputs.nixpkgs.follows = "nixpkgs-unstable";
+    };
+
     # Declarative Flatpak # TODO:
     # https://github.com/GermanBread/declarative-flatpak/blob/dev/docs/home-manager.md
     # or maybe
@@ -42,7 +47,7 @@
 
   };
 
-  outputs = { self, nixpkgs, nur, home-manager, nix-matlab, ... }@inputs:
+  outputs = { self, nixpkgs, home-manager, nur, ... }@inputs:
   let
     inherit (self) outputs;
     lib = nixpkgs.lib // home-manager.lib;
@@ -77,13 +82,18 @@
       "rar"
       "unrar"
     ];
+    allowed-insecure-packages = [
+      # Sonarr requires dotnet-6.0 (deprecated): see https://discourse.nixos.org/t/solved-sonarr-is-broken-in-24-11-unstable-aka-how-the-hell-do-i-use-nixpkgs-config-permittedinsecurepackages/56828
+      "dotnet-sdk-6.0.428"
+      "aspnetcore-runtime-6.0.36"
+    ];
     system = "x86_64-linux";
     # flake-overlays = [
     #   nix-matlab.overlay
     # ];
   in
   {
-    inherit lib allowed-unfree-packages; # TODO needed to call outputs.allowed-unfree-packages, how to use outputs.allowed-unfree-packages directly?
+    inherit lib allowed-unfree-packages allowed-insecure-packages; # TODO needed to call outputs.allowed-unfree-packages, how to use outputs.allowed-unfree-packages directly?
     # Custom modules to enable special functionality for nixos or home-manager oriented configs.
     nixosModules = import ./modules/nixos;
     # homeManagerModules = import ./modules/home-manager;

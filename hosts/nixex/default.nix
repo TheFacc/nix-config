@@ -22,28 +22,27 @@
     ../common/optional/pipewire.nix # audio
     ../common/optional/kate.nix
 
-    # play
+    # Media: Play
     ../common/optional/vlc.nix
     # ../common/optional/mpv.nix #--> home-manager
-    ../common/optional/serverr/plex/player.nix #TODO make declarative
+#    ../common/optional/plex/player.nix #TODO make declarative
     
-    # share
-    ../common/optional/serverr/plex/server.nix
-    ../common/optional/serverr/plex/tautulli.nix
-    ../common/optional/serverr/jellyfin/jellyfin.nix
-    ../common/optional/serverr/jellyfin/jellyseerr.nix
-    ../common/optional/serverr/rclone.nix
-    ../common/optional/serverr/arr.nix
-    ../common/optional/serverr/qbittorrent.nix
+    # Media: Share
+    ../common/optional/plex/server.nix
+    ../common/optional/plex/tautulli.nix
+    ../common/optional/services/jellyfin.nix #TODO config
+    ../common/optional/services/jellyseerr.nix
+    ../common/optional/services/rclone.nix
+    ../common/optional/services/arr.nix
+    ../common/optional/services/qbittorrent.nix
     ../common/optional/services/tailscale.nix
-    inputs.nur.nixosModules.nur
-#     inputs.nur.hmModules.nur
+    inputs.nur.modules.nixos.default
 
     #################### Users to Create ####################
     ../common/users/facc
-    # ../common/users/campiglio
+ #   ../common/users/campiglio
   ];
-  plasma6.enable = true;
+  plasma5.enable = true;
 
   # Enable Arr! #TODO make modular here maybe uhm
   # arrs.enable = true;
@@ -103,6 +102,7 @@
 
   nixpkgs.config = {
     allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) outputs.allowed-unfree-packages;
+    permittedInsecurePackages = outputs.allowed-insecure-packages;
   };
 
 

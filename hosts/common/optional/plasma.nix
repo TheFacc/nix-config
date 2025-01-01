@@ -11,7 +11,7 @@
     services.xserver.enable = true;
 
     # plasma5
-    services.xserver.displayManager.sddm.enable = lib.mkIf config.plasma5.enable true;
+    services.displayManager.sddm.enable = lib.mkIf config.plasma5.enable true;
     services.xserver.desktopManager.plasma5.enable = lib.mkIf config.plasma5.enable true;
 
     # plasma6
