@@ -1,6 +1,8 @@
-{ pkgs, ... }:
+{ pkgs, lib, config, ... }:
+let
+  hasNvidia = builtins.elem "nvidia" config.services.xserver.videoDrivers;
+in
 {
-
   users.groups.docker = {}; # create "docker" group
 
   # rootful
@@ -12,6 +14,5 @@
   #   setSocketVariable = true;
   # };
 
-  hardware.nvidia-container-toolkit.enable = true; # TODO set to false if machine is not using nvidia
-
+  hardware.nvidia-container-toolkit.enable = lib.mkIf hasNvidia true;
 }
