@@ -27,7 +27,6 @@
 
     # Services
     # common/optional/services/onedrive.nix 
-    # common/optional/services/arr.nix 
 
     # Entertainment
     ../common/optional/mpv.nix

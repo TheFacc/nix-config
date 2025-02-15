@@ -15,8 +15,8 @@
       { id = "ghbmnnjooekpmoecnnnilnnbdlolhkhi"; } # google docs offline
       { id = "mnjggcdmjocbbbhaepdhchncahnbgone"; } # sponsorblock
       { id = "nffaoalbilbmmfgbnbgppjihopabppdk"; } # html5 video speed changer
-      { id = "ekhagklcjbdpajgpjgmbionohlpdbjgc"; } # zotero connector
-      { id = "cipccbpjpemcnijhjcdjmkjhmhniiick"; } # scispace copilot
+      # { id = "ekhagklcjbdpajgpjgmbionohlpdbjgc"; } # zotero connector
+      # { id = "cipccbpjpemcnijhjcdjmkjhmhniiick"; } # scispace copilot
       { id = "pcnhobmoglanpljipbomknafhdlcgcng"; } # copilot in search
     ];
     # extraOpts = {
@@ -37,6 +37,7 @@
     commandLineArgs = [
       # "--disable-features=WebRtcAllowInputVolumeAdjustment"
       "--restore-last-session"
+      "--enable-features=TouchpadOverscrollHistoryNavigation"
     ];
   };
 }

@@ -1,6 +1,8 @@
 # on first run, you will need to run onedrive --synchronize --verbose to authenticate
-{ outputs, pkgs, config, lib, ... }:
+{ pkgs, config, ... }:
 let
+    user = "facc";
+    homeDir = config.users.users.${user}.home;
     onePkg = pkgs.onedrive;
 in
 {
@@ -9,6 +11,6 @@ in
         package = onePkg;
     };
     systemd.services.onedrive.serviceConfig = { #TODO properly current user
-        ExecStart = "${onePkg}/bin/onedrive --monitor --monitor-interval 60 --confdir ${config.users.users.facc.home}/.config/onedrive";    
+        ExecStart = "${onePkg}/bin/onedrive --monitor --monitor-interval 60 --confdir ${homeDir}/.config/onedrive";    
     };
 }

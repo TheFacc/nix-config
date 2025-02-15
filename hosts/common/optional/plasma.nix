@@ -9,9 +9,9 @@
   config = {
     # Enable the X11 windowing system.
     services.xserver.enable = true;
+    services.displayManager.sddm.enable = true;
 
     # plasma5
-    services.displayManager.sddm.enable = lib.mkIf config.plasma5.enable true;
     services.xserver.desktopManager.plasma5.enable = lib.mkIf config.plasma5.enable true;
 
     # plasma6
@@ -22,5 +22,10 @@
       # pkgs.kdePackages.konsole
       pkgs.kdePackages.oxygen
     ];
+    # extra config from discourse 57808
+    hardware.graphics.enable = true;
+    hardware.graphics.enable32Bit = true; # mostly for games, that mostly still run on x11
+    services.displayManager.sddm.wayland.enable = true;
+    services.displayManager.defaultSession = "plasma";
   };
 }

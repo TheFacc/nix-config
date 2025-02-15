@@ -10,11 +10,11 @@
         name = "TheFacc";
         email = "imthefacc@gmail.com";
       };
-      "user.AFLux" = {
-        name = "Alessio Facincani";
-        email = "alessio.facincani@ext.luxottica.com";
-        # signing.key = "-----";
-      };
+#       "user.AFLux" = {
+#         name = "Alessio Facincani";
+#         email = "alessio.facincani@ext.luxottica.com";
+#         # signing.key = "-----";
+#       };
       # url = {
       #   "ssh://git@github.com" = {
       #     insteadOf = "https://github.com";

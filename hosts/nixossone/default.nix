@@ -28,9 +28,11 @@
     ../common/optional/bluetooth.nix
     ../common/optional/ios.nix # ios file transfer support
     # ../common/optional/smbclient.nix # mount the ghost mediashare
+    ../common/optional/zram.nix # zram swap
 
     # Desktop
-    ../common/optional/plasma.nix # desktop environment
+     ../common/optional/plasma.nix # desktop environment
+#    ../common/optional/gnome.nix # desktop environment
     # ../common/optional/services/greetd.nix # display manager
     # ../common/optional/hyprland.nix # window manager
 
@@ -47,16 +49,16 @@
 
     # Media
     ../common/optional/vlc.nix # media player (mpv is in home config)
-    ../common/optional/audacity.nix # audio editor
+#     ../common/optional/audacity.nix # audio editor
     ../common/optional/serverr/plex/player.nix # plex media player
     ../common/optional/serverr/jellyfin/jellyfin-mpv.nix # jellyfin media player
 
     # Notes
-    ../common/optional/zotero.nix # zotero
+#     ../common/optional/zotero.nix # zotero
     ../common/optional/obsidian.nix # obsidian.md
 
     # Dev
-    ../common/optional/clangd.nix
+#     ../common/optional/clangd.nix
     ../common/optional/nixd.nix
 
     # Tools
@@ -170,21 +172,22 @@
   # Enable CUPS to print documents.
   services.printing.enable = true;
 
+  ### <nvidia> ###
   # # from nixos-hardware lenovo-legion-16irx8h
   # hardware.opengl.extraPackages = with pkgs; [
   #   vaapiVdpau
   # ];
   services.xserver.videoDrivers = lib.mkDefault [ "nvidia" ];
   boot.initrd.kernelModules = ["nvidia"];
-  boot.extraModulePackages = [
-    # config.boot.kernelPackages.lenovo-legion-module
-    config.boot.kernelPackages.nvidia_x11
-    # config.boot.kernelPackages.nvidia_wayland # heh magari
-  ];
+  # boot.extraModulePackages = [
+  #   # config.boot.kernelPackages.lenovo-legion-module
+  #   config.boot.kernelPackages.nvidia_x11 ##### random KERNEL PANIC on 550.142-6.12.13 and also 565.77
+  #   # config.boot.kernelPackages.nvidia_wayland # heh magari
+  # ];
   hardware = {
     nvidia = {
       open = true; # https://github.com/NixOS/nixpkgs/commit/43764ae2c337f5e5f6b5485a7092734f3b1fdf2d
-      package = lib.mkForce config.boot.kernelPackages.nvidiaPackages.stable; # forcing beta to have 555 as of 2024-05-25 (maybe not rly forcing tho lol)
+      package = config.boot.kernelPackages.nvidiaPackages.latest; # beta > latest > production = stable
       # package = config.boot.kernelPackages.nvidiaPackages.mkDriver { # https://www.reddit.com/r/NixOS/comments/1cx9wsy/comment/l51ubth/
       #   version = "555.42.02";
       #   sha256_64bit = "sha256-k7cI3ZDlKp4mT46jMkLaIrc2YUx1lh1wj/J4SVSHWyk=";
@@ -194,7 +197,10 @@
       #   persistencedSha256 = lib.fakeSha256;
       # };
       modesetting.enable = lib.mkDefault true;
-      powerManagement.enable = lib.mkDefault true;
+      powerManagement = {
+        enable = lib.mkDefault true;
+        # finegrained = true; # low power: https://download.nvidia.com/XFree86/Linux-x86_64/460.73.01/README/dynamicpowermanagement.html
+      };
       prime = {
         offload = {
           enable = lib.mkOverride 990 true;
@@ -209,6 +215,8 @@
     };
   };
   boot.kernelParams = [ "nvidia-drm.modeset=1" ]; # idk if needed
+  ### </nvidia> ###
+
   # # Cooling management
   services.thermald.enable = lib.mkDefault true;
   services.xserver.dpi = 189; # √(2560² + 1600²) px / 16 in ≃ 189 dpi
@@ -243,6 +251,6 @@
 #   SUBSYSTEMS=="usb|hidraw", ATTRS{idVendor}=="187c", ATTRS{idProduct}=="0551", TAG+="uaccess", TAG+="Dell_G_Series_LED_Controller"
 #   '';
 
-  system.stateVersion = "23.11"; # Did you read the comment?
+  system.stateVersion = "24.11"; # Did you read the comment?
 
 }

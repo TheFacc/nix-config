@@ -3,8 +3,8 @@
 
   inputs = {
     # NixOS package sources
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";#release-24.11";
-    nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    nixpkgs-stable.url = "github:nixos/nixpkgs/release-24.11";
 
     # NixOS hardware packages
     hardware.url = "github:nixos/nixos-hardware";
@@ -21,6 +21,12 @@
 #       inputs.home-manager.follows = "home-manager";
 #     };
 
+    ###temp, push nixook version
+    nix-vscode-extensions = {
+      url = "github:nix-community/nix-vscode-extensions";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # MATLAB
     nix-matlab = {
       url = "gitlab:doronbehar/nix-matlab";
@@ -35,7 +41,7 @@
     # Nix User Repository
     nur = {
       url = "github:nix-community/NUR";
-      inputs.nixpkgs.follows = "nixpkgs-unstable";
+      inputs.nixpkgs.follows = "nixpkgs";
     };
 
     # Declarative Flatpak # TODO:
