@@ -1,7 +1,7 @@
 #############################################################
 #
 #  Nixex ~ Nix Plex - Home Theatre
-#  NixOS running on Toffa's Dell Inspiron
+#  NixOS running on my old Samsung tank
 #
 ###############################################################
 
@@ -21,23 +21,22 @@
     ../common/optional/plasma.nix # desktop environment
     ../common/optional/pipewire.nix # audio
     ../common/optional/kate.nix
-
-    # Media: Play
+    # play
     ../common/optional/vlc.nix
     # ../common/optional/mpv.nix #--> home-manager
 #    ../common/optional/plex/player.nix #TODO make declarative
-    
-    # Media: Share
+    # share
     ../common/optional/plex/server.nix
     ../common/optional/plex/tautulli.nix
     ../common/optional/services/jellyfin.nix #TODO config
     ../common/optional/services/jellyseerr.nix
-    ../common/optional/services/rclone.nix
     ../common/optional/services/arr.nix
     ../common/optional/services/qbittorrent.nix
     ../common/optional/services/tailscale.nix
-    ../common/optional/services/syncthing-devices.nix # devices IDs
-    ../common/optional/services/syncthing-folders.nix # service and sync folders
+    ../common/optional/services/syncthing-devices.nix # core config
+    ../common/optional/services/syncthing-folders.nix # folders config
+    ../common/optional/services/mediastorage.nix # mergerfs
+    ../common/optional/services/tinymediamanager.nix # uses podman, waits for mergerfs
     inputs.nur.modules.nixos.default
 
     #################### Users to Create ####################
