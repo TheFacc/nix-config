@@ -13,6 +13,7 @@ let
           # Tools
           gruntfuggly.todo-tree
           eamodio.gitlens
+          # codeium.codeium
 
           # Nix
           bbenoist.nix
@@ -45,39 +46,44 @@ let
           # mathworks.language-matlab
           
           # Github
-          github.copilot
+          # github.copilot # i had it here before march2025, moved to keep them close, reason below
           # github.copilot-chat #-> forcing 'release' version below, instead of 'latest' which is too new and always incompatible with the current vscode version
 #          github.copilot-labs -> discontinued
           #sourcegraph.cody-ai
           
-          antfu.goto-alias
+          antfu.goto-alias # + custom userSettings
       ]) ++ (with extPk.vscode-marketplace-release; [
         # https://raw.githubusercontent.com/nix-community/nix-vscode-extensions/master/data/cache/vscode-marketplace-release.json
-          github.copilot-chat
+        #   github.copilot #### disabled since april2025 cos i cannot allow them as unfree for some reason now. see obsidian
+        #   github.copilot-chat
       ]);
 
 in
 
 {
-    # - VSCode
-    programs.vscode = {
-      enable = true;
-      # package = pkgs.vscodium;
-      mutableExtensionsDir = false;
+  # - VSCode
+  programs.vscode = {
+    enable = true;
+    # package = pkgs.vscodium;
+    mutableExtensionsDir = false;
+    profiles.default = {
+      extensions = extensionsList;
       enableUpdateCheck = false;
       enableExtensionUpdateCheck = false;
-      extensions = extensionsList;
       userSettings = {
         # "editor.fontFamily" = "'FiraCode Nerd Font', 'FiraCode Nerd Font Mono', 'monospace', monospace";
         "window.titleBarStyle" = "custom";
         "workbench.colorTheme" = "Monokai Pro (Filter Spectrum)";
         "github.copilot.editor.enableAutoCompletions" = true;
+        "diffEditor.ignoreTrimWhitespace" = false;
         "nix.enableLanguageServer" = true;
         "nix.serverPath" = "nixd";
         "nix.formatterPath" = "nixfmt";
         "formatting" = {
           "command" = "nixfmt";
         };
+        "editor.gotoLocation.multipleDefinitions" = "goto";
       };
     };
+  };
 }

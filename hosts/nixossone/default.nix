@@ -1,19 +1,17 @@
 # { allowed-unfree-packages, user, config, pkgs, options, lib, ... }:
-{ inputs, outputs, config, lib, ... }:
+{ inputs, outputs, config, lib, pkgs, ... }:
 # import needed user + all core modules + some optional modules
 {
   imports = [
-    # ./nixos-hardware/dell/g16/7630 # from nixos-hardware / lenovo legion 16IRX8H
-    # ./hardware-configuration.nix # auto generated on installation
-#     ./keyboard.nix # attempt to have rgb config heh
-
     #################### Hardware Modules ####################
+    # ./nixos-hardware/dell/g16/7630 # from nixos-hardware / not available, similar is Lenovo Legion 16IRX8H
     inputs.hardware.nixosModules.common-cpu-intel
     # inputs.hardware.nixosModules.common-gpu-nvidia#-prime ?? not found # 2024-05-26 manually added below so i can specify version 555
     inputs.hardware.nixosModules.common-pc-laptop
     inputs.hardware.nixosModules.common-pc-laptop-ssd
     inputs.hardware.nixosModules.common-hidpi
     # inputs.hardware.nixosModules.lenovo-legion-16irx8h
+#     ./keyboard.nix # attempt to have rgb config heh
 
     #################### Required Configs ####################
     ../common/core
@@ -43,15 +41,18 @@
     ../common/optional/services/syncthing-folders.nix # syncthing sync folders
     ../common/optional/docker.nix # sorry nix
     ../common/optional/virtualbox.nix # virtualbox
+    # ../common/optional/services/automount.nix # automatically mount external disks
 
     # Comms
     ../common/optional/comms/telegram.nix
+    ../common/optional/comms/beeper.nix
 
     # Media
     ../common/optional/vlc.nix # media player (mpv is in home config)
 #     ../common/optional/audacity.nix # audio editor
     ../common/optional/serverr/plex/player.nix # plex media player
     ../common/optional/serverr/jellyfin/jellyfin-mpv.nix # jellyfin media player
+    ../common/optional/steam.nix # steam
 
     # Notes
 #     ../common/optional/zotero.nix # zotero
@@ -60,10 +61,12 @@
     # Dev
 #     ../common/optional/clangd.nix
     ../common/optional/nixd.nix
+    ../common/optional/windsurf.nix
 
     # Tools
     # ../common/optional/kdiskmark.nix # disk benchmark
     ../common/optional/rar.nix # RAR archives
+    ../common/optional/anydesk.nix # remote desktop
 
     # Web
     ../common/optional/persepolis.nix # download manager (~IDM)
@@ -206,11 +209,11 @@
           enable = lib.mkOverride 990 true;
           enableOffloadCmd = lib.mkIf config.hardware.nvidia.prime.offload.enable true; # Provides `nvidia-offload` command.
         };
-        # intelBusId = "PCI:00:02:0";
-        # nvidiaBusId = "PCI:01:00:0";
+        intelBusId = "PCI:00:02:0";
+        nvidiaBusId = "PCI:01:00:0";
         # https://discourse.nixos.org/t/struggling-with-nvidia-prime/13794
-        intelBusId = "0@0:2:0";
-        nvidiaBusId = "1@0:0:0";
+#         intelBusId = "0@0:2:0"; # format not accepted anymore since apr2025
+#         nvidiaBusId = "1@0:0:0";
       };
     };
   };

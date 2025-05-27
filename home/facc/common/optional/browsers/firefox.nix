@@ -4,19 +4,19 @@
     enable = true;
     profiles."facc" = {
       # enable = true;
-      bookmarks = [
-        { #TODO: add more bookmarks
-        		name = "Bookmarks Toolbar";
-						toolbar = true;
-            bookmarks = [
-              {
-                name = "Sonarr";
-                url = "localhost:8989";
-                tags = [ "arr" ];
-              }
-            ];
-          }
-      ];
+#       bookmarks = [
+#         { #TODO: add more bookmarks
+#         		name = "Bookmarks Toolbar";
+# 						toolbar = true;
+#             bookmarks = [
+#               {
+#                 name = "Sonarr";
+#                 url = "localhost:8989";
+#                 tags = [ "arr" ];
+#               }
+#             ];
+#           }
+#       ];
       settings = { # about:config
         "browser.shell.checkDefaultBrowser" = false;
         "browser.startup.homepage" = "https://start.duckduckgo.com";
@@ -42,7 +42,7 @@
             icon = "${pkgs.nixos-icons}/share/icons/hicolor/scalable/apps/nix-snowflake.svg";
             definedAliases = [ "@np" ];
           };
-          "DuckDuckGo" = {
+          "ddg" = {
             urls = [{
               template = "https://duckduckgo.com/";
               params = [
@@ -52,7 +52,7 @@
             icon = "https://duckduckgo.com/favicon.ico";
             definedAliases = [ "@ddg" ];
           };
-          "Google" = {
+          "google" = {
             urls = [{
               template = "https://www.google.com/search";
               params = [
@@ -62,7 +62,7 @@
             icon = "https://www.google.com/favicon.ico";
             definedAliases = [ "@g" ];
           };
-          "YouTube" = {
+          "youtube" = {
             urls = [{
               template = "https://www.youtube.com/results";
               params = [
@@ -83,12 +83,12 @@
             definedAliases = [ "@w" ];
           };
         };
-        privateDefault = "DuckDuckGo";
+        privateDefault = "ddg";
       };
       userChrome = ''
         /* some css */
       '';
-      extensions = with inputs.firefox-addons.packages."x86_64-linux"; [ #TODO inherit system
+      extensions.packages = with inputs.firefox-addons.packages."x86_64-linux"; [ #TODO inherit system
           ublock-origin
         ];
     };

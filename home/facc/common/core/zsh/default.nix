@@ -36,30 +36,30 @@
       # }
     ];
 
-    initExtraFirst = ''
+    initContent = #lib.mkBefore ''
+    ''
       # Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
       # Initialization code that may require console input (password prompts, [y/n]
       # confirmations, etc.) must go above this block; everything else may go below.
       if [[ -r "''${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-''${(%):-%n}.zsh" ]]; then
         source "''${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-''${(%):-%n}.zsh"
       fi
-    '';
 
-    initExtra = ''
-            # autoSuggestions config
+      # initextra
+      # autoSuggestions config
 
-            unsetopt correct # autocorrect commands
+      unsetopt correct # autocorrect commands
 
-            setopt hist_ignore_all_dups # remove older duplicate entries from history
-            setopt hist_reduce_blanks # remove superfluous blanks from history items
-            setopt inc_append_history # save history entries as soon as they are entered
+      setopt hist_ignore_all_dups # remove older duplicate entries from history
+      setopt hist_reduce_blanks # remove superfluous blanks from history items
+      setopt inc_append_history # save history entries as soon as they are entered
 
-            # auto complete options
-            setopt auto_list # automatically list choices on ambiguous completion
-            setopt auto_menu # automatically use menu completion
-            zstyle ':completion:*' menu select # select completions with arrow keys
-            zstyle ':completion:*' group-name "" # group results by category
-            zstyle ':completion:::::' completer _expand _complete _ignored _approximate # enable approximate matches for completion
+      # auto complete options
+      setopt auto_list # automatically list choices on ambiguous completion
+      setopt auto_menu # automatically use menu completion
+      zstyle ':completion:*' menu select # select completions with arrow keys
+      zstyle ':completion:*' group-name "" # group results by category
+      zstyle ':completion:::::' completer _expand _complete _ignored _approximate # enable approximate matches for completion
 
       #      bindkey '^I' forward-word         # tab
       #      bindkey '^[[Z' backward-word      # shift+tab
@@ -101,11 +101,11 @@
       dfsw = "cd $HOME/src/dotfiles.wiki";
       nfs = "cd $HOME/src/nix-config";
       uc = "cd $HOME/src/unmovedcentre";
-      l = "eza -lah";
-      la = "eza -lah";
-      ll = "eza -lh";
+      l = "eza -lah --group";
+      la = "eza -lah --group";
+      ll = "eza -lh --group";
       ls = "eza";
-      lsa = "eza -lah";
+      lsa = "eza -lah --group";
 
       # #-------------Neovim---------------
       # e = "nvim";
