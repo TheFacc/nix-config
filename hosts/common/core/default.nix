@@ -3,7 +3,7 @@
     inputs.home-manager.nixosModules.home-manager
     ./locale.nix # localization settings
     ./nix.nix # nix settings and garbage collection
-    # ./sops.nix # secrets management
+    ./sops.nix # secrets management
     ./zsh.nix # load a basic shell just in case we need it without home-manager
     ./1.1.1.1.nix # cloudflare dns
     

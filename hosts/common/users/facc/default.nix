@@ -42,5 +42,5 @@ in
 
   # Import this user's personal/home configurations
   home-manager.users.facc = import ../../../../home/facc/${config.networking.hostName}.nix;
-
+  
 }

@@ -21,12 +21,17 @@
 #       inputs.home-manager.follows = "home-manager";
 #     };
 
-    ###temp, push nixook version
+    # Secret management
+    sops-nix = {
+      url = "github:Mic92/sops-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    # Nix VSCode extensions
     nix-vscode-extensions = {
       url = "github:nix-community/nix-vscode-extensions";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-
     # MATLAB
     nix-matlab = {
       url = "gitlab:doronbehar/nix-matlab";
