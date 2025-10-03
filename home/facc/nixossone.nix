@@ -11,6 +11,9 @@
     # common/optional/sops.nix
     # common/optional/helper-scripts
 
+    inputs.plasma-manager.homeModules.plasma-manager
+    common/optional/desktops/plasma # TODO: make plasma-manager work
+    common/optional/desktops/catppuccin.nix
     {
       home = {
         username = "facc";

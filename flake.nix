@@ -14,6 +14,12 @@
       url = "github:nix-community/home-manager";#/release-23.11";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # Plasma-manager for managing KDE Plasma declaratively # TODO
+    plasma-manager = {
+      url = "github:nix-community/plasma-manager";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.home-manager.follows = "home-manager";
+    };
 
     # Secret management
     sops-nix = {
@@ -36,6 +42,11 @@
       url = "gitlab:rycee/nur-expressions?dir=pkgs/firefox-addons";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+#     # copyparty
+#     copyparty = {
+#       url = "github:9001/copyparty";
+#       inputs.nixpkgs.follows = "nixpkgs";
+#     };
 
     # Nix User Repository
     nur = {
@@ -50,6 +61,11 @@
     # flatpak.url = "github:yawnt/declarative-nix-flatpak/main";
     # flatpaks.url = "github:GermanBread/declarative-flatpak/stable";
 
+    # Theme
+    catppuccin = {
+      url = "github:catppuccin/nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = { self, nixpkgs, home-manager, nur, ... }@inputs:

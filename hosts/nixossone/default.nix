@@ -26,6 +26,7 @@
 
     # Desktop
      ../common/optional/plasma.nix # desktop environment -- enable from homemanager TEST
+     ../common/optional/catppuccin.nix # theme
 #    ../common/optional/gnome.nix # desktop environment
     # ../common/optional/services/greetd.nix # display manager
     # ../common/optional/hyprland.nix # window manager
