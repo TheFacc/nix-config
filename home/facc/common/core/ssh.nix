@@ -15,6 +15,10 @@
 #         User alessio.facincani@ext.luxottica.com
 #         IdentityFile ~/.ssh/id_rsa_lux
     '';
+
+    # default values are going deprecated:
+    enableDefaultConfig = false;
+    matchBlocks."*" = { forwardAgent = false; addKeysToAgent = "no"; compression = false; serverAliveInterval = 0; serverAliveCountMax = 3; hashKnownHosts = false; userKnownHostsFile = "~/.ssh/known_hosts"; controlMaster = "no"; controlPath = "~/.ssh/master-%r@%n:%p"; controlPersist = "no"; };
   };
   #  home.file.".ssh/sockets/.keep".text = "# Managed by Home Manager";
 }

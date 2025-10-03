@@ -11,7 +11,12 @@
     # common/optional/sops.nix
     # common/optional/helper-scripts
 
-    # common/optional/desktops/plasma.nix # TODO: make plasma-manager work
+    {
+      home = {
+        username = "facc";
+        homeDirectory = "/home/facc";
+      };
+    }
     # common/optional/desktops/gtk.nix
 
     # Browsers

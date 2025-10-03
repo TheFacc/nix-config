@@ -4,7 +4,7 @@
   inputs = {
     # NixOS package sources
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-    nixpkgs-stable.url = "github:nixos/nixpkgs/release-24.11";
+    nixpkgs-stable.url = "github:nixos/nixpkgs/release-25.05";
 
     # NixOS hardware packages
     hardware.url = "github:nixos/nixos-hardware";
@@ -14,12 +14,6 @@
       url = "github:nix-community/home-manager";#/release-23.11";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-#     # Plasma-manager for managing KDE Plasma declaratively # TODO
-#     plasma-manager = {
-#       url = "github:pjones/plasma-manager";
-#       inputs.nixpkgs.follows = "nixpkgs";
-#       inputs.home-manager.follows = "home-manager";
-#     };
 
     # Secret management
     sops-nix = {
@@ -143,7 +137,6 @@
       # main workstation
       "facc@nixossone" = lib.homeManagerConfiguration {
         modules = [
-#           inputs.plasma-manager.homeManagerModules.plasma-manager
           ./home/facc/nixossone.nix
         ];
         pkgs = pkgsFor.x86_64-linux;
