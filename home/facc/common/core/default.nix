@@ -15,6 +15,7 @@
     ./ssh.nix # personal ssh configs
     # ./zoxide.nix # cd replacement
     ./zsh # primary shell
+    ./zoxide.nix # smarter cd
 
   ] ;#++ (builtins.attrValues outputs.homeManagerModules);
 
