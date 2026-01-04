@@ -14,7 +14,7 @@
       url = "github:nix-community/home-manager";#/release-23.11";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    # Plasma-manager for managing KDE Plasma declaratively # TODO
+    # Plasma-manager for managing KDE Plasma declaratively
     plasma-manager = {
       url = "github:nix-community/plasma-manager";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -97,7 +97,6 @@
       "nvidia-x11"
       "nvidia-settings"
       "nvidia-persistenced"
-      "vscode"
       "plexmediaserver"
       "obsidian"
       "rar"
@@ -106,7 +105,9 @@
       "steam-unwrapped"
       "anydesk"
       "beeper"
-      "windsurf"
+      # "vscode"
+      "antigravity"
+      "google-chrome"
     ];
     allowed-insecure-packages = [
       # Sonarr requires dotnet-6.0 (deprecated): see https://discourse.nixos.org/t/solved-sonarr-is-broken-in-24-11-unstable-aka-how-the-hell-do-i-use-nixpkgs-config-permittedinsecurepackages/56828

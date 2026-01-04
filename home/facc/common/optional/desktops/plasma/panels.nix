@@ -180,7 +180,7 @@
               };
               launchers = [
                 "applications:org.kde.dolphin.desktop"
-                "applications:org.kde.konsole.desktop"
+                "applications:kitty.desktop"
                 "preferred://browser"
               ];
             };
@@ -309,7 +309,7 @@
               timeZone = {
                 alwaysShow = false;
                 changeOnScroll = false;
-                lastSelected = "Europe/Rome";
+                lastSelected = "Asia/Ho_Chi_Minh";
                 selected = [
                   "Europe/Rome"
                   "Europe/Athens"

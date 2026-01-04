@@ -13,13 +13,19 @@ let
           # Tools
           gruntfuggly.todo-tree
           eamodio.gitlens
-          # codeium.codeium
 
           # Nix
           bbenoist.nix
 
+          # C++
+          llvm-vs-code-extensions.vscode-clangd
+          ms-vscode.cmake-tools
+
+          # Python
+          ms-python.python
+
           # Nuxt
-          nuxtr.nuxt-vscode-extentions
+          nuxtr.nuxt-vscode-extentions 
           nuxtr.nuxtr-vscode
           nuxt.mdc
           vue.volar
@@ -27,7 +33,8 @@ let
           pflannery.vscode-versionlens
           dbaeumer.vscode-eslint
           esbenp.prettier-vscode
-
+          devsense.phptools-vscode # php
+          natizyskunk.sftp # sftp
       ] ++ (with extPk.vscode-marketplace; [
         # https://raw.githubusercontent.com/nix-community/nix-vscode-extensions/master/data/cache/vscode-marketplace-latest.json
           # C++
@@ -40,18 +47,12 @@ let
           # llvm-vs-code-extensions.vscode-clangd # requires pkgs.llvmPackages_17.clang-unwrapped
           # - CMake:
           # twxs.cmake
-          # ms-vscode.cmake-tools # derivation fails to build with v1.86.2 as of 17-feb-24
-          
+
           # MATLAB
           # mathworks.language-matlab
-          
-          # Github
-          # github.copilot # i had it here before march2025, moved to keep them close, reason below
-          # github.copilot-chat #-> forcing 'release' version below, instead of 'latest' which is too new and always incompatible with the current vscode version
-#          github.copilot-labs -> discontinued
-          #sourcegraph.cody-ai
-          
+    
           antfu.goto-alias # + custom userSettings
+          # heminei.pro-deployer # ftp
       ]) ++ (with extPk.vscode-marketplace-release; [
         # https://raw.githubusercontent.com/nix-community/nix-vscode-extensions/master/data/cache/vscode-marketplace-release.json
         #   github.copilot #### disabled since april2025 cos i cannot allow them as unfree for some reason now. see obsidian
@@ -64,8 +65,14 @@ in
   # - VSCode
   programs.vscode = {
     enable = true;
-    # package = pkgs.vscodium;
-    mutableExtensionsDir = false;
+    package = pkgs.antigravity;
+
+    ## TODO required until they add antigravity to the supported forks
+    nameShort = "Antigravity";
+    dataFolderName = ".antigravity";
+    ##
+
+    mutableExtensionsDir = true; ######## TODO should be false for nixy, but antigravity cannot load extensions otherwise
     profiles.default = {
       extensions = extensionsList;
       enableUpdateCheck = false;

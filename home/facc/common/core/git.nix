@@ -4,7 +4,7 @@
     enable = true;
     # package = pkgs.gitAndTools.gitFull;
     # aliases = { };
-    extraConfig = {
+    settings = {
       init.defaultBranch = "main";
       "user.TheFacc" = {
         name = "TheFacc";

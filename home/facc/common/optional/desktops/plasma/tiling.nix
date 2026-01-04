@@ -26,12 +26,13 @@
           Size = 8;
         };
         "Script-krohnkite" = {
-          floatingClass = "brave-nngceckbapebfimnlniiiahkandclblb-Default,org.kde.kcalc,org.freedesktop.impl.portal.desktop.kde";
+          floatingClass = "brave-nngceckbapebfimnlniiiahkandclblb-Default,org.kde.kcalc,org.freedesktop.impl.portal.desktop.kde,systemsettings,VirtualBox Manager";
           screenGapBetween = 6;
           screenGapBottom = 6;
           screenGapLeft = 6;
           screenGapRight = 6;
           screenGapTop = 6;
+          screenDefaultLayout = "eDP-1:btree,HDMI-A-1:floating";
         };
         Windows = {
           DelayFocusInterval = 0;
@@ -39,3 +40,4 @@
         };
       };
     };
+}

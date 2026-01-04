@@ -18,11 +18,11 @@
     #################### Host-specific Optional Configs ####################
     # ../common/optional/services/openssh.nix # allow remote SSH access
 
-    ../common/optional/plasma.nix # desktop environment
-    ../common/optional/pipewire.nix # audio
+    ../common/optional/ui/plasma.nix # desktop environment
+    ../common/optional/system/pipewire.nix # audio
     ../common/optional/kate.nix
     # play
-    ../common/optional/vlc.nix
+    ../common/optional/media/vlc.nix
     # ../common/optional/mpv.nix #--> home-manager
 #    ../common/optional/plex/player.nix #TODO make declarative
     # share

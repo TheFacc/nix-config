@@ -59,6 +59,8 @@
 
           "Window to Next Screen"     = "Meta+Shift+Right";
           "Window to Previous Screen" = "Meta+Shift+Left";
+
+          "Walk Through Activities" = "Meta+Tab";
         };
 
         org_kde_powerdevil = {
@@ -75,7 +77,7 @@
           ];
         };
       }
-      { "plasmashell"."next activity" = "Meta+Tab"; }
+      { "plasmashell"."walk through activities" = "Meta+Tab"; }
       (lib.mkIf config.programs.brave.enable {
         "services/brave.desktop" = {
           new-window = "Meta+Alt+B";

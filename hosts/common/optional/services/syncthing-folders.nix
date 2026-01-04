@@ -9,7 +9,7 @@ let
       id = "obsidian-main";
       label = "(sync) obsidian";
       type = "sendreceive";
-      devices = [ "nixossone" "Ultracc" ];
+      devices = [ ]; #[ "nixossone" "Ultracc" ];
   };
   st_walls_desktop = {
       id = "walls-desktop";

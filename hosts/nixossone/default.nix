@@ -19,17 +19,14 @@
     ./nvidia.nix
 
     #################### Host-specific Optional Configs ####################
-    ../common/optional/pipewire.nix # audio
-    ../common/optional/bluetooth.nix
-    ../common/optional/ios.nix # ios file transfer support
-    ../common/optional/zram.nix # zram swap
+    ../common/optional/system/pipewire.nix # audio
+    ../common/optional/system/bluetooth.nix
+    ../common/optional/system/ios.nix # ios file transfer support
+    ../common/optional/system/zram.nix # zram swap
 
     # Desktop
-     ../common/optional/plasma.nix # desktop environment -- enable from homemanager TEST
-     ../common/optional/catppuccin.nix # theme
-#    ../common/optional/gnome.nix # desktop environment
-    # ../common/optional/services/greetd.nix # display manager
-    # ../common/optional/hyprland.nix # window manager
+     ../common/optional/ui/plasma.nix # desktop environment -- enable from homemanager TEST
+     ../common/optional/ui/catppuccin.nix # theme
 
     # Services
     # ../common/optional/services/onedrive.nix # onedrive for linux
@@ -45,29 +42,27 @@
     ../common/optional/comms/beeper.nix
 
     # Media
-    ../common/optional/vlc.nix # media player (mpv is in home config)
-#     ../common/optional/audacity.nix # audio editor
-    ../common/optional/serverr/plex/player.nix # plex media player
-#     ../common/optional/serverr/jellyfin/jellyfin-mpv.nix # jellyfin media player
-    ../common/optional/steam.nix # steam
+    ../common/optional/media/vlc.nix # media player (mpv is in home config)
+    # ../common/optional/serverr/plex/player.nix # plex media player
+    ../common/optional/serverr/jellyfin/jellyfin-mpv.nix # jellyfin media player
+    ../common/optional/media/steam.nix # steam
 
     # Notes
 #     ../common/optional/zotero.nix # zotero
     ../common/optional/obsidian.nix # obsidian.md
 
     # Dev
-#     ../common/optional/clangd.nix
-    ../common/optional/nixd.nix
-    ../common/optional/windsurf.nix
+    # ../common/optional/dev/clangd.nix
+    ../common/optional/dev/nixd.nix
+    ../common/optional/dev/webdev.nix # node php jq chrome
 
     # Tools
-    # ../common/optional/kdiskmark.nix # disk benchmark
     ../common/optional/rar.nix # RAR archives
     ../common/optional/anydesk.nix # remote desktop
 
     # Web
-    ../common/optional/persepolis.nix # download manager (~IDM)
-    ../common/optional/dbeaver.nix # MySQL database manager
+    ../common/optional/media/persepolis.nix # download manager (~IDM)
+    ../common/optional/dev/dbeaver.nix # MySQL database manager
 
     #################### Users to Create ####################
     ../common/users/facc 
