@@ -308,8 +308,8 @@
               };
               timeZone = {
                 alwaysShow = false;
-                changeOnScroll = false;
-                lastSelected = "Asia/Ho_Chi_Minh";
+                changeOnScroll = true;
+                lastSelected = "Europe/Rome";
                 selected = [
                   "Europe/Rome"
                   "Europe/Athens"

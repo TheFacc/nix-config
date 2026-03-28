@@ -55,6 +55,7 @@
     # ../common/optional/dev/clangd.nix
     ../common/optional/dev/nixd.nix
     ../common/optional/dev/webdev.nix # node php jq chrome
+    ../common/optional/dev/cursor.nix # cursor
 
     # Tools
     ../common/optional/rar.nix # RAR archives

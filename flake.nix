@@ -106,6 +106,7 @@
       "anydesk"
       "beeper"
       # "vscode"
+      "cursor"
       "antigravity"
       "google-chrome"
     ];

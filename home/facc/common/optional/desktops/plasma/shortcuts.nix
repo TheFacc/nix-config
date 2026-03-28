@@ -60,7 +60,7 @@
           "Window to Next Screen"     = "Meta+Shift+Right";
           "Window to Previous Screen" = "Meta+Shift+Left";
 
-          "Walk Through Activities" = "Meta+Tab";
+          "Walk through activities" = "Meta+Tab";
         };
 
         org_kde_powerdevil = {
