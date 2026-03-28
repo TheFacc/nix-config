@@ -59,7 +59,7 @@
 
     # Tools
     ../common/optional/rar.nix # RAR archives
-    ../common/optional/anydesk.nix # remote desktop
+    # ../common/optional/anydesk.nix # remote desktop - requires x11 for access
 
     # Web
     ../common/optional/media/persepolis.nix # download manager (~IDM)

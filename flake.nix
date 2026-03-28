@@ -104,6 +104,7 @@
       "steam"
       "steam-unwrapped"
       "anydesk"
+      "n8n"
       "beeper"
       # "vscode"
       "cursor"

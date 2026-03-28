@@ -2,10 +2,10 @@
 
 let
   my-python-packages = python-packages: with python-packages; [
-    python-telegram-bot
+#    python-telegram-bot
     telethon
   ];
-  python-with-my-packages = pkgs.python310.withPackages my-python-packages;
+  python-with-my-packages = pkgs.python314.withPackages my-python-packages;
 
 in
 

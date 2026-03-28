@@ -2,10 +2,10 @@
 # Make sure you configure them with different port and data dir if you want separate config)
 # https://www.reddit.com/r/NixOS/comments/13ikbpc/running_a_second_instance_of_a_service_a_solution/
 
-{ pkgs, lib, config, nixpkgs, ... }:
+{ pkgs, lib, config, ... }:
 
 let
-  baseSystem = nixpkgs.lib.nixosSystem {
+  baseSystem = lib.nixosSystem {
     inherit (pkgs) system;
     modules = [
       ({ lib, ... }: {
@@ -35,7 +35,7 @@ in {
           };
         };
       }) (builtins.removeAttrs x baseServices))
-      (nixpkgs.lib.nixosSystem {
+      (lib.nixosSystem {
         inherit (pkgs) system;
         modules = [
           ({ ... }: {

@@ -18,7 +18,17 @@
       fsType = "ext4";
     };
 
-  boot.initrd.luks.devices."luks-80da479d-ed5c-4725-b3fc-5a4d1684c46f".device = "/dev/disk/by-uuid/80da479d-ed5c-4725-b3fc-5a4d1684c46f";
+  boot.initrd.luks.devices."luks-80da479d-ed5c-4725-b3fc-5a4d1684c46f" =
+    if builtins.pathExists ./cryptkey then {
+      device = "/dev/disk/by-uuid/80da479d-ed5c-4725-b3fc-5a4d1684c46f";
+      keyFile = "/cryptkey";
+    } else {
+      device = "/dev/disk/by-uuid/80da479d-ed5c-4725-b3fc-5a4d1684c46f";
+    };
+
+  boot.initrd.extraFiles = lib.mkIf (builtins.pathExists ./cryptkey) {
+    "/cryptkey".source = builtins.path { path = ./cryptkey; };
+  };
 
   fileSystems."/boot" =
     { device = "/dev/disk/by-uuid/9FB3-31DD";
