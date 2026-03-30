@@ -1,4 +1,7 @@
-{ pkgs, lib, config, ... }:
+{ pkgs, lib, config, ... } @ args:
+let
+  os = args.osConfig or null;
+in
 {
   programs.git = {
     enable = true;
@@ -8,7 +11,7 @@
       init.defaultBranch = "main";
       "user.TheFacc" = {
         name = "TheFacc";
-        email = "imthefacc@gmail.com";
+        # email: NixOS sops template git-user-thefacc-email (include below), not here. Yeah i know, shhh
       };
 #       "user.AFLux" = {
 #         name = "Alessio Facincani";
@@ -24,13 +27,17 @@
       #   };
       # };
 
-      # #TODO sops - Re-enable once sops setup complete
       # commit.gpgSign = false;
       # gpg.program = "${config.programs.gpg.package}/bin/gpg2";
     };
     # enable git Large File Storage: https://git-lfs.com/
     # lfs.enable = true;
     ignores = [ ".direnv" "result" ];
+    signing.format = "openpgp";
+    # Rendered by NixOS sops (root key); path is runtime, not the nix store.
+    includes = lib.optionals (os != null && os.local.hasSopsSecrets) [
+      { path = os.sops.templates."git-user-thefacc-email".path; }
+    ];
   };
   programs.gh = {
     enable = true;

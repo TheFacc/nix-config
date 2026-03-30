@@ -4,6 +4,7 @@
     ./locale.nix # localization settings
     ./nix.nix # nix settings and garbage collection
     ./sops.nix # secrets management
+    ./sops-meta.nix
     ./zsh.nix # load a basic shell just in case we need it without home-manager
     ./1.1.1.1.nix # cloudflare dns
     
@@ -11,6 +12,7 @@
 
   ] ++ (builtins.attrValues outputs.nixosModules);
 
+  home-manager.sharedModules = [ inputs.sops-nix.homeManagerModules.sops ];
   home-manager.extraSpecialArgs = { inherit inputs outputs; };
 
 #   nixpkgs = {

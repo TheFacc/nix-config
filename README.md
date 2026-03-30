@@ -21,9 +21,9 @@ Now I don't fear nuking my system and starting over.
 ├── flake.nix          # Entry point: ties everything together
 ├── hosts/             # System configs (per-machine)
 │   ├── common/        # Shared system modules
-│   │   ├── core/      # System-level settings for all hosts (locale, DNS, shell, sops, etc.)
+│   │   ├── core/      # System-level settings for all hosts (locale, DNS, shell, sops secrets, etc.)
 │   │   ├── optional/  # Optional system modules (WM, apps, services, etc.)    <-- the juice
-│   │   └── users/     # Global user settings (groups, secrets, home-manager refs)
+│   │   └── users/     # Global user settings (groups, home-manager refs)
 │   └── $hostname/     # Host-specific system configs    <-- imports the above
 │
 ├── home/                    # Home-manager configs (per-user)
@@ -81,6 +81,23 @@ If you bumped your head and forgot how to use this, here's a quick refresher:
    home-manager switch --flake .#your-username@your-hostname
    ```
 4. **Tweak, expand, and enjoy!**
+
+### Secrets (sops-nix)
+
+Sensitive values (e.g. Syncthing GUI password, credentials, etc.) are **not** stored in the Nix store as plaintext. This flake uses **[sops-nix](https://github.com/Mic92/sops-nix)** with **[SOPS](https://github.com/getsops/sops)** and **age**:
+
+- **In git:** encrypted `hosts/common/core/secrets/secrets.yaml` (ciphertext), `.sops.yaml` (age **public** recipients only), and `secrets.yaml.example` (placeholders).
+- **On each machine:** private age key at `/var/lib/sops-nix/keys.txt` (created manually or by tooling - see the doc below).
+- **At runtime:** decrypted material under `/run/secrets` (and rendered templates), not world-readable store paths.
+
+**If you clone this repo:** you cannot rebuild the same secrets without your **own** age keys and a new encrypted `secrets.yaml`. Short flow:
+
+1. Install `age` and `sops` (`nix shell nixpkgs#age nixpkgs#sops`).
+2. Generate keys and fill `hosts/common/core/secrets/.sops.yaml` with your **public** age keys.
+3. Copy `secrets.yaml.example` → `secrets.yaml`, edit values, then encrypt with `sops` (nested YAML shape must match the example - see the doc).
+4. Put the matching **private** key on each host as `/var/lib/sops-nix/keys.txt`, then `sudo nixos-rebuild switch --flake .#hostname`.
+
+Full step-by-step notes, troubleshooting, and what is safe to publish are in **[`hosts/common/core/secrets/README.md`](hosts/common/core/secrets/README.md)**.
 
 
 

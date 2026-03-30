@@ -36,9 +36,7 @@
     ../common/optional/serverr/arr.nix
     ../common/optional/serverr/qbittorrent.nix
     ../common/optional/services/tailscale.nix
-    ../common/optional/services/syncthing-devices.nix # core config
-    ../common/optional/services/syncthing-folders.nix # folders config
- #   ../common/optional/services/nextcloud.nix
+    ../common/optional/services/syncthing.nix # syncthing devices (JSON) + folders
 #    ../common/optional/services/automount.nix
     ../common/optional/services/n8n.nix # n8n
     ../common/optional/services/vaultsync.nix # obsidian vault headless sync

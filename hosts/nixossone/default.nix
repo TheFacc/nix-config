@@ -31,8 +31,7 @@
     # Services
     # ../common/optional/services/onedrive.nix # onedrive for linux
     ../common/optional/services/tailscale.nix # tailscale vpn
-    ../common/optional/services/syncthing-devices.nix # syncthing devices IDs
-    ../common/optional/services/syncthing-folders.nix # syncthing sync folders
+    ../common/optional/services/syncthing.nix # syncthing devices (JSON) + folders
     ../common/optional/docker.nix # sorry nix
     ../common/optional/virtualbox.nix # virtualbox
     # ../common/optional/services/automount.nix # automatically mount external disks
