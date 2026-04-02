@@ -26,12 +26,12 @@
     # play
     ../common/optional/media/vlc.nix
     # ../common/optional/mpv.nix #--> home-manager
-#    ../common/optional/plex/player.nix #TODO make declarative... niente han fatto in tempo a montarsi la testa, ciao
     # share
     ../common/optional/serverr/plex/server.nix
     ../common/optional/serverr/plex/tautulli.nix
-    ../common/optional/serverr/jellyfin/jellyfin.nix #TODO config
-    ../common/optional/serverr/jellyfin/jellyseerr.nix
+    ../common/optional/serverr/jellyfin/jellyfin.nix
+    ../common/optional/serverr/jellyfin/jellyfin-backup.nix
+    # ../common/optional/serverr/jellyfin/jellyseerr.nix
   #  ../common/optional/serverr/rclone.nix
     ../common/optional/serverr/arr.nix
     ../common/optional/serverr/qbittorrent.nix
@@ -107,6 +107,8 @@
   };
 
   users.groups.media = {};
+
+  services.jellyfin-backup.enable = true;
 
   boot = {
     loader = {
