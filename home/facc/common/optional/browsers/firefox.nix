@@ -1,22 +1,22 @@
-{ pkgs, inputs, ... }:
+{ config, pkgs, inputs, ... }:
 { # example: https://pastebin.com/fBnPupGy
   programs.firefox = {
     enable = true;
-    profiles."facc" = {
+    profiles."${config.home.username}" = {
       # enable = true;
-#       bookmarks = [
-#         { #TODO: add more bookmarks
-#         		name = "Bookmarks Toolbar";
-# 						toolbar = true;
-#             bookmarks = [
-#               {
-#                 name = "Sonarr";
-#                 url = "localhost:8989";
-#                 tags = [ "arr" ];
-#               }
-#             ];
-#           }
-#       ];
+      # bookmarks = [
+      #   { #TODO: add more bookmarks
+      #   		name = "Bookmarks Toolbar";
+			# 			toolbar = true;
+      #       bookmarks = [
+      #         {
+      #           name = "Sonarr";
+      #           url = "localhost:8989";
+      #           tags = [ "arr" ];
+      #         }
+      #       ];
+      #     }
+      # ];
       settings = { # about:config
         "browser.shell.checkDefaultBrowser" = false;
         "browser.startup.homepage" = "https://start.duckduckgo.com";
@@ -90,7 +90,7 @@
       '';
       extensions.packages = with inputs.firefox-addons.packages."x86_64-linux"; [ #TODO inherit system
           ublock-origin
-        ];
+      ];
     };
 
     # commandLineArgs = [

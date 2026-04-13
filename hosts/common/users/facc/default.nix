@@ -14,7 +14,7 @@ in
     extraGroups = [
       "wheel"
       # "input"
-      # "networkmanager"
+      "networkmanager"
       "audio"
       "video"
     ] ++ ifTheyExist [
