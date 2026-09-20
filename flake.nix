@@ -66,6 +66,17 @@
       url = "github:catppuccin/nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # Dank Material Shell (Niri integration via home-manager modules)
+    dms = {
+      url = "github:AvengeMedia/DankMaterialShell/stable";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    niri = {
+      url = "github:sodiboo/niri-flake";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = { self, nixpkgs, home-manager, nur, ... }@inputs:
@@ -150,6 +161,11 @@
         modules = [ ./hosts/nixex ];
         specialArgs = { inherit inputs outputs; };
       };
+      # thinkpad, productivitynkpad, niri + dms
+      "nixpad" = lib.nixosSystem {
+        modules = [ ./hosts/nixpad ];
+        specialArgs = { inherit inputs outputs; };
+      };
     };
 
     #################### User-level Home-Manager Configurations ####################
@@ -180,6 +196,11 @@
       };
       "facc@nixex" = lib.homeManagerConfiguration {
         modules = [ ./home/facc/nixex.nix ];
+        pkgs = pkgsFor.x86_64-linux;
+        extraSpecialArgs = { inherit inputs outputs; };
+      };
+      "facc@nixpad" = lib.homeManagerConfiguration {
+        modules = [ ./home/facc/nixpad.nix ];
         pkgs = pkgsFor.x86_64-linux;
         extraSpecialArgs = { inherit inputs outputs; };
       };
