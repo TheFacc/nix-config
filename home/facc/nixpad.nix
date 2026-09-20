@@ -1,4 +1,4 @@
-# facc on nixpad — minimal home profile for Niri + DMS VM testing.
+# facc on nixpad — niri + DMS
 { inputs, lib, pkgs, config, outputs, ... }:
 {
   imports = [
@@ -6,15 +6,23 @@
 
     common/optional/desktops/catppuccin.nix
     common/optional/desktops/niri-desktop-binds.nix
-    common/optional/browsers/firefox.nix
 
-    # Later daily parity, no plasma
-    # common/optional/browsers/brave.nix
+    # Browsers
+    common/optional/browsers/firefox.nix
+    common/optional/browsers/brave.nix
+
+    # Dev
     # common/optional/dev/vscode.nix
     # common/optional/dev/matlab.nix
+
+    # Comms
     # common/optional/comms/telegram.nix
+
+    # Services
     # common/optional/services/onedrive.nix
-    # ../common/optional/mpv.nix
+
+    # Entertainment
+    ../common/optional/mpv.nix
 
     {
       home = {

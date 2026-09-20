@@ -27,31 +27,44 @@
     ../common/core
     ./hardware-configuration.nix
 
-    #################### Desktop ####################
+    #################### Host-specific Optional Configs ####################
     ../common/optional/system/pipewire.nix
+    ../common/optional/system/bluetooth.nix
+    ../common/optional/system/ios.nix
     ../common/optional/system/zram.nix
+
+    # Desktop
     ../common/optional/ui/niri.nix
     ../common/optional/ui/dms.nix
     ../common/optional/ui/catppuccin.nix
 
-    #################### Enable as the machine settles in ####################
-    # ../common/optional/system/bluetooth.nix
-    # ../common/optional/system/ios.nix
+    # Services
     # ../common/optional/services/onedrive.nix
     ../common/optional/services/tailscale.nix
     # ../common/optional/services/syncthing.nix
-    # ../common/optional/services/automount.nix
-    # ../common/optional/docker.nix
+    ../common/optional/docker.nix
     # ../common/optional/virtualbox.nix
-    # ../common/optional/comms/telegram.nix
-    # ../common/optional/comms/beeper.nix
-    # ../common/optional/media/vlc.nix
-    # ../common/optional/media/steam.nix
-    # ../common/optional/obsidian.nix
-    # ../common/optional/dev/nixd.nix
-    # ../common/optional/dev/webdev.nix
-    # ../common/optional/dev/cursor.nix
-    # ../common/optional/rar.nix
+    # ../common/optional/services/automount.nix
+
+    # Comms
+    ../common/optional/comms/telegram.nix
+    ../common/optional/comms/beeper.nix
+
+    # Media
+    ../common/optional/media/vlc.nix
+    ../common/optional/serverr/jellyfin/jellyfin-mpv.nix
+    ../common/optional/media/steam.nix
+
+    # Notes
+    ../common/optional/obsidian.nix
+
+    # Dev
+    ../common/optional/dev/nixd.nix
+    ../common/optional/dev/webdev.nix
+    ../common/optional/dev/cursor.nix
+
+    # Tools
+    ../common/optional/rar.nix
 
     #################### Users ####################
     ../common/users/facc
