@@ -72,7 +72,6 @@
     fprintd.enable = lib.mkDefault true;
   };
 
-  # Fingerprint PAM is intentionally not enabled here. Enroll first with:
-  #   fprintd-enroll $USER
-  # Then enable the specific PAM services you want in the host config.
+  # Fingerprint PAM lives in hosts/nixpad/default.nix. Enroll with:
+  #   fprintd-enroll
 }

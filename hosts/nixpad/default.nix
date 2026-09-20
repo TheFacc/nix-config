@@ -122,10 +122,19 @@
   services.udisks2.enable = true;
 
   services.xserver.xkb = {
-    layout = "us";
-    variant = "altgr-intl";
+    layout = "it";
   };
-  console.keyMap = "us-acentos";
+  console.useXkbConfig = true;
+
+  # fprintd is already enabled in hardware-config-p16s-gen4.nix.
+  # Enroll after rebuild: fprintd-enroll
+  # Then swipe at tuigreet / lock / sudo; password still works as fallback.
+  security.pam.services = {
+    login.fprintAuth = true;
+    greetd.fprintAuth = true;
+    sudo.fprintAuth = true;
+    polkit-1.fprintAuth = true;
+  };
 
   system.stateVersion = "25.05";
 }

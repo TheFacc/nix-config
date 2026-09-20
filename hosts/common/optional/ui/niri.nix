@@ -31,9 +31,13 @@
   environment.sessionVariables = {
     NIXOS_OZONE_WLONLY = "1";
     MOZ_ENABLE_WAYLAND = "1";
+    # System-wide so niri finds the theme in /run/current-system (not only ~/.icons).
+    XCURSOR_THEME = "Adwaita";
+    XCURSOR_SIZE = "24";
   };
 
   environment.systemPackages = with pkgs; [
+    adwaita-icon-theme
     wl-clipboard
     grim
     slurp

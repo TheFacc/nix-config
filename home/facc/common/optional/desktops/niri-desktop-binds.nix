@@ -2,10 +2,17 @@
 let
   dms = "${pkgs.dms-shell}/bin/dms";
   dmsNiriConfig = builtins.readFile "${pkgs.dms-shell.src}/core/internal/config/embedded/niri.kdl";
-  managedNiriConfig = builtins.replaceStrings
-    [ "    // focus-follows-mouse max-scroll-amount=\"0%\"" ]
-    [ "    focus-follows-mouse max-scroll-amount=\"25%\"" ]
-    dmsNiriConfig;
+  managedNiriConfig =
+    let
+      withFocusFollowsMouse = builtins.replaceStrings
+        [ "    // focus-follows-mouse max-scroll-amount=\"0%\"" ]
+        [ "    focus-follows-mouse max-scroll-amount=\"25%\"" ]
+        dmsNiriConfig;
+    in
+    builtins.replaceStrings
+      [ "            // layout \"us,ru\"" ]
+      [ "            layout \"it\"" ]
+      withFocusFollowsMouse;
   dolphin = "${pkgs.kdePackages.dolphin}/bin/dolphin";
   foot = "${pkgs.foot}/bin/foot";
   screenshotRegion = pkgs.writeShellScript "niri-screenshot-region-swappy" ''
@@ -35,6 +42,19 @@ in
   xdg.configFile."niri/config.kdl" = {
     force = true;
     text = managedNiriConfig;
+  };
+
+  # Niri's default cursor (and DMS "System Default") only has left_ptr, so
+  # text / resize / pointer shapes never appear. Pin Adwaita, a complete theme.
+  # DMS may rewrite this file if the cursor is changed in its Settings UI.
+  xdg.configFile."niri/dms/cursor.kdl" = {
+    force = true;
+    text = ''
+      cursor {
+          xcursor-theme "Adwaita"
+          xcursor-size 24
+      }
+    '';
   };
 
   # DMS's Niri config also includes "dms/layout.kdl". To declaratively tune
