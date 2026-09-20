@@ -64,6 +64,7 @@
     ../common/optional/dev/cursor.nix
 
     # Tools
+    ../common/optional/openlogi.nix # Logitech Options+ alternative
     ../common/optional/rar.nix
 
     #################### Users ####################

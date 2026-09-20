@@ -57,6 +57,7 @@
     ../common/optional/dev/cursor.nix # cursor
 
     # Tools
+    ../common/optional/openlogi.nix # Logitech Options+ alternative
     ../common/optional/rar.nix # RAR archives
     # ../common/optional/anydesk.nix # remote desktop - requires x11 for access
 

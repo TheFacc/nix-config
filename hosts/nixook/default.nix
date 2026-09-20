@@ -45,6 +45,7 @@
     ../common/optional/nixd.nix
 
     # Tools
+    ../common/optional/openlogi.nix # Logitech Options+ alternative
     ../common/optional/rar.nix # RAR archives
 
     # Web
