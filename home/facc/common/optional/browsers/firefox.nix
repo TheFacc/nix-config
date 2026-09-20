@@ -2,6 +2,8 @@
 { # example: https://pastebin.com/fBnPupGy
   programs.firefox = {
     enable = true;
+    # home.stateVersion is < 26.05, so opt in to the new XDG layout explicitly.
+    configPath = "${config.xdg.configHome}/mozilla/firefox";
     profiles."${config.home.username}" = {
       # enable = true;
       # bookmarks = [
