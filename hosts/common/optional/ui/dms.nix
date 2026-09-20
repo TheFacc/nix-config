@@ -13,8 +13,9 @@
     # Plasma-adjacent QoL; trim for a lean VM.
     enableDynamicTheming = true;
     enableCalendarEvents = true;
-    enableSystemMonitoring = true;
+  #  enableSystemMonitoring = true; # now builtin
     enableAudioWavelength = true;
+  #  enableClipboardPaste = true;  # now builtin
     enableVPN = lib.mkDefault false;
   };
 }

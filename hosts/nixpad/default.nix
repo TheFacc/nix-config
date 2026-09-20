@@ -1,48 +1,112 @@
-# Minimal NixOS VM for testing Niri + DMS before deploying to bare metal.
+# ThinkPad P16s Gen 4 — bare metal, dual boot with Windows 11, sadly.
 #
-# Install workflow (recommended):
-#   1. Create a Gen2 EFI VM (Hyper-V or VirtualBox), 4+ GB RAM, 40+ GB disk.
-#   2. Install from the standard NixOS minimal ISO (graphical installer is fine).
-#   3. Clone this repo, copy hardware-configuration.nix from the installer.
-#   4. sudo nixos-rebuild switch --flake /path/to/nix-config#nixpad
-#   5. Log in, run once: dms setup
-#   6. Rebuild after config tweaks — no need for a custom ISO.
+# Disk layout (single NVMe, GPT, UEFI, Secure Boot disabled):
+#   nvme0n1p1  260 MB   ESP        shared with Windows — NEVER reformat, mounted /efi
+#   nvme0n1p2   16 MB   MSR        Windows
+#   nvme0n1p3  ~450 GB  NTFS       Windows C:
+#   nvme0n1p5    1 GB   XBOOTLDR   FAT32, NixOS kernels + initrds, mounted /boot
+#   nvme0n1p6  ~500 GB  LUKS2      -> btrfs: @ @home @nix @snapshots, compress=zstd
+#   nvme0n1p4  1.95 GB  WinRE      Windows recovery
+#
+# Install workflow (bare metal):
+#   1. Boot the GRAPHICAL NixOS ISO (Secure Boot disabled in firmware).
+#   2. Shrink Windows with GParted, create the NixOS partition.
+#   3. XBOOTLDR + LUKS + btrfs subvolumes by hand, mount under /mnt.
+#   4. nixos-generate-config --root /mnt  -> copy into hosts/nixpad/
+#   5. nixos-install --flake /mnt/etc/nixos/nix-config#nixpad
+#   See ~/docs/nixos-install-runbook.md for the full step-by-step runbook.
 { inputs, outputs, config, lib, ... }:
 {
   imports = [
     #################### Hardware ####################
-    inputs.hardware.nixosModules.common-pc
-    inputs.hardware.nixosModules.common-pc-ssd
+    inputs.hardware.nixosModules.common-pc-laptop
+    inputs.hardware.nixosModules.common-pc-laptop-ssd
+    ./hardware-config-p16s-gen4.nix
 
     #################### Core ####################
     ../common/core
     ./hardware-configuration.nix
 
-    #################### VM + desktop ####################
-    ../common/optional/virtualisation/vm-guest.nix
+    #################### Desktop ####################
     ../common/optional/system/pipewire.nix
     ../common/optional/system/zram.nix
     ../common/optional/ui/niri.nix
     ../common/optional/ui/dms.nix
     ../common/optional/ui/catppuccin.nix
 
+    #################### Enable as the machine settles in ####################
+    # ../common/optional/system/bluetooth.nix
+    # ../common/optional/system/ios.nix
+    # ../common/optional/services/onedrive.nix
+    ../common/optional/services/tailscale.nix
+    # ../common/optional/services/syncthing.nix
+    # ../common/optional/services/automount.nix
+    # ../common/optional/docker.nix
+    # ../common/optional/virtualbox.nix
+    # ../common/optional/comms/telegram.nix
+    # ../common/optional/comms/beeper.nix
+    # ../common/optional/media/vlc.nix
+    # ../common/optional/media/steam.nix
+    # ../common/optional/obsidian.nix
+    # ../common/optional/dev/nixd.nix
+    # ../common/optional/dev/webdev.nix
+    # ../common/optional/dev/cursor.nix
+    # ../common/optional/rar.nix
+
     #################### Users ####################
     ../common/users/facc
   ];
 
   networking.hostName = "nixpad";
-
-  # Pick one after you create the VM: "hyperv" or "virtualbox".
-  local.vmGuest = "hyperv";
+  networking.networkmanager.enable = true;
 
   nixpkgs.config = {
     allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) outputs.allowed-unfree-packages;
   };
 
-  boot.loader.systemd-boot.enable = true;
+  #################### Boot ####################
+  # UEFI + systemd-boot in a split ESP / XBOOTLDR layout.
+  #
+  # The Windows ESP (nvme0n1p1) is only 260 MB with ~218 MB free, and one NixOS
+  # generation costs roughly 60-120 MB (kernel + systemd initrd). Three
+  # generations do not fit there. So the ESP holds only systemd-bootx64.efi
+  # (~100 KB) and is mounted at /efi, while kernels and initrds live on a
+  # dedicated 1 GB XBOOTLDR partition (nvme0n1p5, FAT32, GPT type GUID
+  # bc13c2ff-59e6-4262-a352-b275fd6f7172) mounted at /boot.
+  #
+  # This keeps the single unified boot menu: systemd-boot itself still lives on
+  # the Windows ESP and still auto-detects EFI/Microsoft/Boot/bootmgfw.efi
+  # there, so Windows appears in the menu with no chainload config.
+  #
+  # FALLBACK if the XBOOTLDR partition was never created: set
+  #   efiSysMountPoint = "/boot";  drop xbootldrMountPoint;  configurationLimit = 2;
+  # and mount nvme0n1p1 at /boot instead of /efi. Then watch `df -h /boot`.
+  boot.loader.systemd-boot = {
+    enable = true;
+    xbootldrMountPoint = "/boot";
+    configurationLimit = 10;
+  };
   boot.loader.efi.canTouchEfiVariables = true;
+  boot.loader.efi.efiSysMountPoint = "/efi";
 
-  networking.networkmanager.enable = true;
+  # systemd in initrd: caches the LUKS passphrase and retries it on every
+  # encrypted device, so growing the btrfs pool later with
+  # `btrfs device add` still means typing the passphrase only once.
+  boot.initrd.systemd.enable = true;
+
+  # Mount the Windows NTFS partition. Works read-write because C: is decrypted
+  # and Fast Startup is disabled on the Windows side — if Windows ever
+  # re-enables Fast Startup or hibernates, ntfs3 will refuse or mount
+  # read-only. That is the safety net working, not a fault.
+  boot.supportedFilesystems = [ "ntfs" ];
+
+  services.fstrim.enable = true;
+
+  #################### Desktop bits ####################
+  # Makes Dolphin friendlier outside Plasma: trash, removable devices, and
+  # common gvfs-backed locations work through the usual desktop services.
+  services.gvfs.enable = true;
+  services.udisks2.enable = true;
 
   services.xserver.xkb = {
     layout = "us";
@@ -50,6 +114,5 @@
   };
   console.keyMap = "us-acentos";
 
-  # Lean VM: skip printing, thermald, heavy services.
   system.stateVersion = "25.05";
 }
