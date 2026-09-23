@@ -6,6 +6,7 @@
 
     common/optional/desktops/catppuccin.nix
     common/optional/desktops/niri-desktop-binds.nix
+    common/optional/ghostty.nix
 
     # Browsers
     common/optional/browsers/firefox.nix
@@ -38,8 +39,6 @@
     };
 
     home.sessionVariables = {
-      TERM = lib.mkForce "xterm-256color";
-      TERMINAL = lib.mkForce "foot";
       QT_QPA_PLATFORMTHEME = "kde";
       QT_STYLE_OVERRIDE = "Breeze";
     };
@@ -54,8 +53,6 @@
     };
 
     home.packages = with pkgs; [
-      foot
-
       kdePackages.dolphin
       kdePackages.kate
       kdePackages.kio-extras

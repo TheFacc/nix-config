@@ -14,7 +14,7 @@ let
       [ "            layout \"it\"" ]
       withFocusFollowsMouse;
   dolphin = "${pkgs.kdePackages.dolphin}/bin/dolphin";
-  foot = "${pkgs.foot}/bin/foot";
+  ghostty = "${pkgs.ghostty}/bin/ghostty";
   screenshotRegion = pkgs.writeShellScript "niri-screenshot-region-swappy" ''
     set -euo pipefail
 
@@ -96,8 +96,8 @@ in
     text = ''
       binds {
           // === Launchers & DMS surfaces ===
-          Mod+Return hotkey-overlay-title="Open Terminal" { spawn "${foot}"; }
-          Mod+T hotkey-overlay-title="Open Terminal" { spawn "${foot}"; }
+          Mod+Return hotkey-overlay-title="Open Terminal" { spawn "${ghostty}"; }
+          Mod+T hotkey-overlay-title="Open Terminal" { spawn "${ghostty}"; }
           Mod+E hotkey-overlay-title="Open Dolphin" { spawn "${dolphin}"; }
 
           Mod+Space hotkey-overlay-title="Application Launcher" {
