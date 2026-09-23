@@ -65,6 +65,7 @@
     ../common/optional/dev/coding-agents.nix # claude, codex
 
     # Tools
+    ../common/optional/appimage.nix
     ../common/optional/openlogi.nix # Logitech Options+ alternative
     ../common/optional/rar.nix
 
