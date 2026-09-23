@@ -26,14 +26,27 @@
           owner = config.users.users.facc.name;
           mode = "0400";
         };
+        "users/facc/git/work_email" = {
+          owner = config.users.users.facc.name;
+          mode = "0400";
+        };
       };
 
       templates."git-user-thefacc-email" = {
         owner = config.users.users.facc.name;
         mode = "0600";
         content = ''
-          [user "TheFacc"]
+          [user]
             email = ${config.sops.placeholder."users/facc/git/email"}
+        '';
+      };
+
+      templates."git-user-becq-email" = {
+        owner = config.users.users.facc.name;
+        mode = "0600";
+        content = ''
+          [user]
+            email = ${config.sops.placeholder."users/facc/git/work_email"}
         '';
       };
     })

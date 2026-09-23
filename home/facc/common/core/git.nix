@@ -5,45 +5,33 @@ in
 {
   programs.git = {
     enable = true;
-    # package = pkgs.gitAndTools.gitFull;
-    # aliases = { };
     settings = {
       init.defaultBranch = "main";
-      "user.TheFacc" = {
-        name = "TheFacc";
-        # email: NixOS sops template git-user-thefacc-email (include below), not here. Yeah i know, shhh
-      };
-#       "user.AFLux" = {
-#         name = "Alessio Facincani";
-#         email = "alessio.facincani@ext.luxottica.com";
-#         # signing.key = "-----";
-#       };
-      # url = {
-      #   "ssh://git@github.com" = {
-      #     insteadOf = "https://github.com";
-      #   };
-      #   "ssh://git@gitlab.com" = {
-      #     insteadOf = "https://gitlab.com";
-      #   };
-      # };
-
-      # commit.gpgSign = false;
-      # gpg.program = "${config.programs.gpg.package}/bin/gpg2";
+      user.name = "TheFacc";
+      core.sshCommand = "ssh -i ~/.ssh/id_facc -o IdentitiesOnly=yes";
+      url."git@github.com:".insteadOf = "https://github.com/";  # HTTPS remotes use your key too
     };
-    # enable git Large File Storage: https://git-lfs.com/
-    # lfs.enable = true;
     ignores = [ ".direnv" "result" ];
     signing.format = "openpgp";
-    # Rendered by NixOS sops (root key); path is runtime, not the nix store.
-    includes = lib.optionals (os != null && os.local.hasSopsSecrets) [
-      { path = os.sops.templates."git-user-thefacc-email".path; }
-    ];
+    # Emails are rendered by NixOS sops (runtime paths, not the nix store). Later includes win.
+    includes =
+      let
+        sops = os != null && os.local.hasSopsSecrets;
+        work = "gitdir:~/Documents/Bll/";   # every repo under here is Becquerel
+      in
+      lib.optionals sops [ { path = os.sops.templates."git-user-thefacc-email".path; } ]
+      ++ [{
+        condition = work;
+        contents = {
+          user.name = "Alessio-Becquerel";
+          core.sshCommand = "ssh -i ~/.ssh/id_becq -o IdentitiesOnly=yes";
+        };
+      }]
+      ++ lib.optionals sops [ { condition = work; path = os.sops.templates."git-user-becq-email".path; } ];
   };
   programs.gh = {
     enable = true;
-    extensions = [
-      # pkgs.gh-copilot
-    ];
+    gitCredentialHelper.enable = false;   # git no longer goes through gh
   };
     #   home.packages = with pkgs; [
     #   github-desktop

@@ -18,21 +18,7 @@
         ControlPersist = "no";
       };
 
-      # git@github.com-facc:TheFacc/repo.git
-      "github.com-facc" = {
-        HostName = "github.com";
-        User = "TheFacc";
-        IdentityFile = "~/.ssh/id_rsa";
-        IdentitiesOnly = true;
-      };
-
-      # git@github.com-becq:Alessio-Becquerel/repo.git
-      "github.com-becq" = {
-        HostName = "github.com";
-        User = "Alessio-Becquerel";
-        IdentityFile = "~/.ssh/id_becq";
-        IdentitiesOnly = true;
-      };
+      # GitHub keys are picked per directory in git.nix (core.sshCommand).
 
       # lux
       # "*.google.com" = {
