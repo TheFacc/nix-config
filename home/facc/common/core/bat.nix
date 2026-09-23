@@ -8,6 +8,10 @@
       # Show line numbers, Git modifications and file header (but no grid)
       style = "numbers,changes,header";
       theme = "gruvbox-dark";
+      # Bat's own wrap writes real newlines, so a copied line pastes broken.
+      wrap = "never";
+      # The pager (less) folds lines itself and freezes those breaks, so skip it.
+      paging = "never";
     };
     extraPackages = builtins.attrValues {
       inherit (pkgs.bat-extras)
