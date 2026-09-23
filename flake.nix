@@ -125,6 +125,7 @@
       "beeper"
       # "vscode"
       "cursor"
+      "claude-code"
       "antigravity"
       "google-chrome"
     ];

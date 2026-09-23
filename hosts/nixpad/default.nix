@@ -60,8 +60,9 @@
 
     # Dev
     ../common/optional/dev/nixd.nix
-    ../common/optional/dev/webdev.nix
+    # ../common/optional/dev/webdev.nix
     ../common/optional/dev/cursor.nix
+    ../common/optional/dev/coding-agents.nix # claude, codex
 
     # Tools
     ../common/optional/openlogi.nix # Logitech Options+ alternative
