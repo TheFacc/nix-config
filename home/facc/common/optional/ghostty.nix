@@ -11,6 +11,7 @@
       # Niri draws the frame; skip the GTK header bar.
       gtk-titlebar = false;
       confirm-close-surface = false;
+      async-backend = "epoll";
     };
   };
 
