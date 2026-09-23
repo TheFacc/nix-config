@@ -116,6 +116,9 @@
 
   services.fstrim.enable = true;
 
+  # Get battery info (was enabled by Plasma automatically, now we need it explicitly)
+  services.upower.enable = true;
+
   #################### Desktop bits ####################
   # Makes Dolphin friendlier outside Plasma: trash, removable devices, and
   # common gvfs-backed locations work through the usual desktop services.
