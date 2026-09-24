@@ -1,0 +1,6 @@
+# nixex LUKS key files, read by the initrd (never commit)
+hosts/nixex/cryptkey*
+# syncthing device IDs, kept only on the machines that use them
+hosts/common/optional/services/syncthing-devices.json
+# host-local lock snapshots, e.g. to rebuild nixex without updating inputs
+flake.lock.*
