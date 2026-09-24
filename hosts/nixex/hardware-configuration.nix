@@ -13,23 +13,28 @@
   boot.kernelModules = [ "kvm-intel" ];
   boot.extraModulePackages = [ ];
 
-  fileSystems."/" =
-    { device = "/dev/disk/by-uuid/f548bd9b-378c-49a9-bd93-17e73458bb52";
+  fileSystems."/" = {
+     # device = "/dev/disk/by-uuid/f548bd9b-378c-49a9-bd93-17e73458bb52";
+      device = "/dev/mapper/luks-80da479d-ed5c-4725-b3fc-5a4d1684c46f";
       fsType = "ext4";
     };
 
-  boot.initrd.luks.devices."luks-80da479d-ed5c-4725-b3fc-5a4d1684c46f" =
-    if builtins.pathExists ./cryptkey then {
+  boot.initrd.luks.devices."luks-80da479d-ed5c-4725-b3fc-5a4d1684c46f" = {
       device = "/dev/disk/by-uuid/80da479d-ed5c-4725-b3fc-5a4d1684c46f";
-      keyFile = "/cryptkey";
-    } else {
-      device = "/dev/disk/by-uuid/80da479d-ed5c-4725-b3fc-5a4d1684c46f";
+      keyFile = "/cryptkey2606";
     };
 
-  boot.initrd.extraFiles = lib.mkIf (builtins.pathExists ./cryptkey) {
-    "/cryptkey".source = builtins.path { path = ./cryptkey; };
-  };
+#  boot.initrd.extraFiles = lib.mkIf (builtins.pathExists ./cryptkey2606) {
+#    "/cryptkey2606".source = builtins.path { path = ./cryptkey2606; };
+#  };
+boot.initrd.secrets."/cryptkey2606" = builtins.path {
+  path = ./cryptkey2606;
+  name = "cryptkey2606";
+};
 
+
+
+##
   fileSystems."/boot" =
     { device = "/dev/disk/by-uuid/9FB3-31DD";
       fsType = "vfat";
