@@ -25,6 +25,7 @@ in
   sops.templates."n8n-env" = lib.mkIf (nixexSops) {
     content = ''
       N8N_PORT=${config.sops.placeholder."services/n8n/local_port"}
+      N8N_EDITOR_BASE_URL="https://${hostName}.${config.sops.placeholder."hosts/nixex/tailscale/tailnet"}.ts.net:${config.sops.placeholder."services/n8n/public_port"}/"
     '';
   };
   systemd.services.n8n.serviceConfig = {
@@ -92,4 +93,13 @@ in
   };
   # - and allow it
   services.tailscale.permitCertUid = lib.mkIf (hostName == "nixex") "caddy";
+
+  # heavy rebuild fix
+    nixpkgs.overlays = [
+    (final: prev: {
+      n8n = prev.n8n.overrideAttrs (old: {
+        NODE_OPTIONS = "--max_old_space_size=4096";
+      });
+    })
+  ];
 }
