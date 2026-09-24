@@ -10,6 +10,7 @@ let
         "data=ordered"
 #         "errors=remount-ro" # mount read-only if error
         "x-systemd.automount"
+        "x-systemd.device-timeout=10s" # give up quickly on a detached disk
         "x-systemd.mount-timeout=20s"
     ];
 in
@@ -18,12 +19,12 @@ in
     fileSystems."/mnt/media/16TB" = {
         device = "/dev/disk/by-uuid/aead249c-8fbf-44f1-b9d5-a80c6dd3c160";
         fsType = "ext4";
-        options = ops;# ++ extraOptions;
+        options = ops; # ++ extraOptions;
     };
     fileSystems."/mnt/media/16TBb" = {
         device = "/dev/disk/by-uuid/05525013-c780-4fb2-ac6d-8839cf01bcc8";
         fsType = "ext4";
-        options = ops;# ++ extraOptions;
+        options = ops; # ++ extraOptions;
     };
 
     # pool them
@@ -32,7 +33,7 @@ in
     ];
     fileSystems."/mnt/mediapool" = {
         fsType = "fuse.mergerfs";
-        device = "/mnt/media/*";
+        device = "/mnt/media/16TB:/mnt/media/16TBb"; #"/mnt/media/*";
         options = [
             "defaults"
             "category.create=epmfs" # existing path, most free space (pre-populate tree as needed!)
@@ -44,6 +45,8 @@ in
             "minfreespace=30G"
             "x-systemd.automount"
             "x-systemd.mount-timeout=20s"
+            "branches-mount-timeout=10"           ## wait for them
+            "branches-mount-timeout-fail=false"   ## dont kill pool just because 1 unavailable
         ];
     };
 }
