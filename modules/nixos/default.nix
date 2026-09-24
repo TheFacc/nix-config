@@ -3,4 +3,5 @@
 {
   # List your module files here
   qbittorrent = import ./qbittorrent.nix;
+  servermon = import ./servermon; # Telegram server monitor/alert bot
 }
