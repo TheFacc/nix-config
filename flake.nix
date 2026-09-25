@@ -128,6 +128,7 @@
       "claude-code"
       "antigravity-ide"
       "google-chrome"
+      "smartgit"
     ];
     allowed-insecure-packages = [
       # Sonarr requires dotnet-6.0 (deprecated): see https://discourse.nixos.org/t/solved-sonarr-is-broken-in-24-11-unstable-aka-how-the-hell-do-i-use-nixpkgs-config-permittedinsecurepackages/56828
