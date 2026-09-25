@@ -64,6 +64,39 @@
       swappy
     ];
 
+    # DMS owns Niri's idle policy. Merge only these keys so its writable
+    # settings file keeps the rest of the preferences made in the UI.
+    home.activation.nixpadPower = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      if [ -z "''${DRY_RUN_CMD:-}" ]; then
+        settings_dir="${config.xdg.configHome}/DankMaterialShell"
+        settings_file="$settings_dir/settings.json"
+        ${pkgs.coreutils}/bin/mkdir -p "$settings_dir"
+        if [ ! -e "$settings_file" ]; then
+          ${pkgs.coreutils}/bin/printf '{}\n' > "$settings_file"
+        fi
+        settings_tmp="$(${pkgs.coreutils}/bin/mktemp "$settings_dir/.settings.json.XXXXXX")"
+        if ${pkgs.jq}/bin/jq -e '
+          if type == "object" then . + {
+            acMonitorTimeout: 600,
+            acPostLockMonitorTimeout: 30,
+            acSuspendTimeout: 0,
+            batteryMonitorTimeout: 90,
+            batteryPostLockMonitorTimeout: 20,
+            batterySuspendTimeout: 0
+          } else error("DMS settings must be an object") end
+        ' "$settings_file" > "$settings_tmp"; then
+          if ${pkgs.diffutils}/bin/cmp -s "$settings_tmp" "$settings_file"; then
+            ${pkgs.coreutils}/bin/rm "$settings_tmp"
+          else
+            ${pkgs.coreutils}/bin/mv "$settings_tmp" "$settings_file"
+          fi
+        else
+          ${pkgs.coreutils}/bin/rm -f "$settings_tmp"
+          exit 1
+        fi
+      fi
+    '';
+
     # Standalone KDE apps under Niri do not inherit Plasma's appearance
     # settings, so provide the small shared config files they read directly.
     xdg.configFile."kdeglobals" = {

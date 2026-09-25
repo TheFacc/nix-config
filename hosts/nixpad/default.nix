@@ -119,7 +119,21 @@
   services.fstrim.enable = true;
 
   # Get battery info (was enabled by Plasma automatically, now we need it explicitly)
-  services.upower.enable = true;
+  services.upower = {
+    enable = true;
+    percentageLow = 20;
+    percentageCritical = 15;
+    percentageAction = 10;
+    criticalPowerAction = "Suspend";
+    allowRiskyCriticalPowerAction = true;
+  };
+
+  # Keep the session running when the lid closes, on battery or AC.
+  services.logind.settings.Login = {
+    HandleLidSwitch = "ignore";
+    HandleLidSwitchExternalPower = "ignore";
+    HandleLidSwitchDocked = "ignore";
+  };
 
   #################### Desktop bits ####################
   # Makes Dolphin friendlier outside Plasma: trash, removable devices, and
