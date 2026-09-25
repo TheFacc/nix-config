@@ -77,6 +77,13 @@ in
       };
     };
 
+    # don't start (and scan an empty root folder) before the media pool is up;
+    # wantedBy: start again when the pool comes back (disk plugged in after boot)
+    systemd.services.sonarr = { unitConfig.RequiresMountsFor = [ "/mnt/mediapool/mainet" ]; wantedBy = [ "mnt-mediapool-mainet.mount" ]; };
+    systemd.services.radarr = { unitConfig.RequiresMountsFor = [ "/mnt/mediapool/mainet" ]; wantedBy = [ "mnt-mediapool-mainet.mount" ]; };
+    systemd.services.sonarr-dupsvc = { unitConfig.RequiresMountsFor = [ "/mnt/mediapool/mainet" ]; wantedBy = [ "mnt-mediapool-mainet.mount" ]; };
+    systemd.services.radarr-dupsvc = { unitConfig.RequiresMountsFor = [ "/mnt/mediapool/mainet" ]; wantedBy = [ "mnt-mediapool-mainet.mount" ]; };
+
     # cloudflare bypass
     systemd.services.flaresolverr = {
       after = [ "network.target" ];

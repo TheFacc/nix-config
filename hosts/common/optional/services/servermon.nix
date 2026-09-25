@@ -26,15 +26,15 @@ in
     # disks + mounts (see ../serverr/mediastorage.nix, hosts/nixex/hardware-configuration.nix)
     mounts = [
       { path = "/mnt/media/16TB"; uuid = "aead249c-8fbf-44f1-b9d5-a80c6dd3c160"; }
-      # currently unplugged: set `required = false;` to silence it until it's back
-      { path = "/mnt/media/16TBb"; uuid = "05525013-c780-4fb2-ac6d-8839cf01bcc8"; reminderInterval = 86400; }
-      { path = "/mnt/mediapool"; } # mergerfs
+      # comes and goes (lives on another machine at times); the pool works without it
+      { path = "/mnt/media/16TBb"; uuid = "05525013-c780-4fb2-ac6d-8839cf01bcc8"; required = false; }
+      { path = "/mnt/mediapool/mainet"; } # mergerfs
       { path = "/mnt/ssd512"; uuid = "c8b71c18-9ce1-4b44-b3bc-2a9d97131045"; } # downloads
     ];
     diskSpace = [
       { path = "/"; warnFreePercent = 10; critFreePercent = 5; }
       { path = "/mnt/ssd512"; warnFreePercent = 10; critFreePercent = 5; minFreeGiB = 50; }
-      { path = "/mnt/mediapool"; warnFreePercent = 5; critFreePercent = 2; minFreeGiB = 500; }
+      { path = "/mnt/mediapool/mainet"; warnFreePercent = 5; critFreePercent = 2; minFreeGiB = 500; }
     ];
 
     network.interfaces = [ "enp3s0" ];

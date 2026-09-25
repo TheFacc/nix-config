@@ -12,8 +12,9 @@ in
 #         })
 #     ];
     systemd.services."podman-${svcName}" = {
-        after = [ "mnt-mediapool.mount" ];
-        requires = [ "mnt-mediapool.mount" ];
+        after = [ "mnt-mediapool-mainet.mount" ];
+        requires = [ "mnt-mediapool-mainet.mount" ];
+        wantedBy = [ "mnt-mediapool-mainet.mount" ]; # start again when the pool comes back
     };
 
     # TMM
@@ -33,7 +34,7 @@ in
                 ];
                 volumes = [
                     "/home/${user}/tmm-config:/data"
-                    "/mnt/mediapool:/media/pool"
+                    "/mnt/mediapool/mainet:/media/pool/mainet" # the pool itself, same paths inside as before
                     "/mnt/ssd512/mainet:/media/ssd512"
                 ];
 #                environment = {}; # Optional env vars, if TMM needs any

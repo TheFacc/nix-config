@@ -53,6 +53,9 @@ in
     }
   ];
 
+  # nixex syncs _bk inside the media pool: start after it (order only, the other folders don't need it)
+  systemd.services.syncthing.after = lib.mkIf (config.networking.hostName == "nixex") [ "mnt-mediapool-mainet.mount" ];
+
   services.syncthing = {
     enable = true;
     user = user;
