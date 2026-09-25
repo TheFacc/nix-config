@@ -126,7 +126,7 @@
       # "vscode"
       "cursor"
       "claude-code"
-      "antigravity"
+      "antigravity-ide"
       "google-chrome"
     ];
     allowed-insecure-packages = [

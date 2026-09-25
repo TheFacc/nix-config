@@ -62,15 +62,10 @@ let
 in
 
 {
-  # - VSCode
-  programs.vscode = {
+  # - VSCode (Antigravity fork, via its dedicated home-manager module)
+  programs.antigravity = {
     enable = true;
-    package = pkgs.antigravity;
-
-    ## TODO required until they add antigravity to the supported forks
-    nameShort = "Antigravity";
-    dataFolderName = ".antigravity";
-    ##
+    package = pkgs.antigravity-ide; # module default still points at the old 'antigravity' alias
 
     mutableExtensionsDir = true; ######## TODO should be false for nixy, but antigravity cannot load extensions otherwise
     profiles.default = {
