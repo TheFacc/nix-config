@@ -6,7 +6,7 @@
 
 let
   baseSystem = lib.nixosSystem {
-    inherit (pkgs) system;
+    system = pkgs.stdenv.hostPlatform.system;
     modules = [
       ({ lib, ... }: {
         networking = {
@@ -36,7 +36,7 @@ in {
         };
       }) (builtins.removeAttrs x baseServices))
       (lib.nixosSystem {
-        inherit (pkgs) system;
+        system = pkgs.stdenv.hostPlatform.system;
         modules = [
           ({ ... }: {
             networking = {
