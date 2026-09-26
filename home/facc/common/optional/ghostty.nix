@@ -12,6 +12,10 @@
       gtk-titlebar = false;
       confirm-close-surface = false;
       async-backend = "epoll";
+      # The `ssh` wrapper from shell integration: installs the xterm-ghostty
+      # terminfo on the remote on first connect (cached per host), and falls
+      # back to TERM=xterm-256color when it can't.
+      shell-integration-features = "ssh-terminfo,ssh-env";
     };
   };
 
@@ -20,8 +24,5 @@
 
   home.sessionVariables = {
     TERMINAL = lib.mkForce "ghostty";
-    # Ghostty ships this terminfo. Over SSH, a host without it needs
-    # `term = xterm-256color` in the settings above.
-    TERM = lib.mkForce "xterm-ghostty";
   };
 }
