@@ -8,6 +8,7 @@ let
   cfg = config.services.vault-snapshot;
   git = lib.getExe pkgs.git;
   gitFlags = lib.escapeShellArgs [
+    "-C" cfg.vaultDir # else git resolves .gitattributes/.mailmap against the caller's cwd
     "-c" "safe.directory=*"
     "-c" "user.name=vault-snapshot"
     "-c" "user.email=vault-snapshot@${config.networking.hostName}"
