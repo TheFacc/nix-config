@@ -21,7 +21,6 @@ in
   systemd.tmpfiles.rules = [
     "d ${configPath} 0700 vaultsync vault - -"
     "d ${configPath}/cache 0700 vaultsync vault - -"
-    "d ${configPath}/logs 0700 vaultsync vault - -"
     "d ${vaultPath} 2770 root vault - -"
   ];
 
@@ -51,7 +50,6 @@ in
             --resilient \
             --recover \
             --max-lock 2m \
-            --log-file ${configPath}/logs/bisync.log \
             --log-level INFO
       '';
 #             --check-access \

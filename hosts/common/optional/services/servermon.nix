@@ -41,7 +41,10 @@ in
     power = { ac = "ADP1"; battery = "BAT1"; }; # /sys/class/power_supply on the Samsung
 
     # sonarr/radarr/... are picked up automatically when enabled
-    failureAlerts.extraServices = [ "tg-c2c" "flaresolverr" ];
+    failureAlerts.extraServices = [ "tg-c2c" "flaresolverr" ]
+      ++ lib.optional (config.users.users ? vaultsync) "vaultsync" # obsidian vault bisync
+      ++ lib.optional config.services.vault-snapshot.enable "vault-snapshot"
+      ++ lib.optional (config.services.vault-snapshot.offsite.enable or false) "vault-snapshot-offsite";
 
     smartd = {
       enable = true;
