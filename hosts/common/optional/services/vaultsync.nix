@@ -49,6 +49,8 @@ in
             --retries 3 \
             --retries-sleep 10s \
             --resilient \
+            --recover \
+            --max-lock 2m \
             --log-file ${configPath}/logs/bisync.log \
             --log-level INFO
       '';
