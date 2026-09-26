@@ -83,6 +83,10 @@
       url = "github:AprilNEA/OpenLogi";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # Hermes Agent (NousResearch): own nixpkgs on purpose, their uv2nix build is CI-tested against it
+    # Tier-2 Nix support, main can break: update deliberately with `nix flake update hermes-agent`
+    hermes-agent.url = "github:NousResearch/hermes-agent";
   };
 
   outputs = { self, nixpkgs, home-manager, nur, ... }@inputs:
