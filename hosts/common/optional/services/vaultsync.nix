@@ -5,6 +5,45 @@ let
   vaultPath  = "/var/lib/obsidian-vault";
   configPath = "/var/lib/vaultsync";
   rcloneConf = "${configPath}/rclone.conf";
+  pendingDir = "/run/vaultsync-queue";
+  pendingSync = "${pendingDir}/pending-sync";
+  watchHermes = pkgs.writeShellScript "vaultsync-watch-hermes" ''
+    set -euo pipefail
+    # A completed write or rename is safer than syncing a file mid-write.
+    # Directory events also cover new subdirectories before recursive watches are installed.
+    while IFS= read -r -d ''' event && IFS= read -r -d ''' path; do
+      if [[ "$event" == *ISDIR* ]] || [[ "$event" != *CREATE* ]]; then
+        : > ${lib.escapeShellArg pendingSync}
+      fi
+    done < <(
+      ${pkgs.inotify-tools}/bin/inotifywait --monitor --recursive --quiet \
+        --event close_write --event moved_to --event moved_from \
+        --event delete --event create \
+        --format '%e%0%w%f%0' --no-newline ${lib.escapeShellArg "${vaultPath}/Hermes"}
+    )
+  '';
+  syncPending = pkgs.writeShellScript "vaultsync-sync-pending" ''
+    set -euo pipefail
+    # Wait for five quiet seconds, even when one turn edits several files.
+    while true; do
+      before=$(${pkgs.coreutils}/bin/stat --format=%y ${lib.escapeShellArg pendingSync})
+      ${pkgs.coreutils}/bin/sleep 5
+      after=$(${pkgs.coreutils}/bin/stat --format=%y ${lib.escapeShellArg pendingSync})
+      [[ "$before" == "$after" ]] && break
+    done
+    while true; do
+      state=$(${pkgs.systemd}/bin/systemctl show --property=ActiveState --value vaultsync.service)
+      case "$state" in
+        active|activating|deactivating) ${pkgs.coreutils}/bin/sleep 1 ;;
+        *) break ;;
+      esac
+    done
+    ${pkgs.coreutils}/bin/rm -f ${lib.escapeShellArg pendingSync}
+    if ! ${pkgs.systemd}/bin/systemctl start vaultsync.service; then
+      # The periodic timer retries; rearming here would loop on a persistent failure.
+      exit 1
+    fi
+  '';
   # Important requirement: rclone.conf remote [koofrcrypt] must have filename_encoding = base64
   #                        to ensure compatibility with Remotely Save plugin
 in
@@ -21,6 +60,7 @@ in
   systemd.tmpfiles.rules = [
     "d ${configPath} 0700 vaultsync vault - -"
     "d ${configPath}/cache 0700 vaultsync vault - -"
+    "d ${pendingDir} 0770 vaultsync root - -"
     "d ${vaultPath} 2770 root vault - -"
   ];
 
@@ -36,7 +76,8 @@ in
       Group = "vault";
       ExecStart = pkgs.writeShellScript "vaultsync-bisync" ''
         set -euo pipefail
-        exec ${pkgs.util-linux}/bin/flock -n ${configPath}/bisync.lock \
+        # A snapshot can briefly hold the same lock; wait instead of treating that as a sync failure.
+        exec ${pkgs.util-linux}/bin/flock -w 600 ${configPath}/bisync.lock \
           ${pkgs.rclone}/bin/rclone bisync \
             "${vaultPath}" "koofrcrypt:" \
             --config "${rcloneConf}" \
@@ -87,6 +128,55 @@ in
       RandomizedDelaySec = "45s";
       Persistent = true;
       Unit = "vaultsync.service";
+    };
+  };
+
+  # Hermes writes only under Hermes/. A filesystem watcher catches writes from
+  # all its tools, including atomic renames, without giving the agent sudo.
+  systemd.services.vaultsync-watch-hermes = {
+    description = "Queue vault sync after Hermes vault edits";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "systemd-tmpfiles-setup.service" ];
+    serviceConfig = {
+      Type = "simple";
+      User = "vaultsync";
+      Group = "vault";
+      ExecStart = watchHermes;
+      Restart = "always";
+      RestartSec = "5s";
+      NoNewPrivileges = true;
+      ProtectSystem = "strict";
+      ProtectHome = true;
+      PrivateTmp = true;
+      CapabilityBoundingSet = "";
+      RestrictAddressFamilies = [ "AF_UNIX" ];
+      ReadWritePaths = [ pendingDir ];
+    };
+  };
+
+  # PathExists keeps a request queued while vaultsync is busy. The watcher may
+  # also see files pulled by bisync; a follow-up no-op run drains those events.
+  systemd.paths.vaultsync-on-change = {
+    wantedBy = [ "multi-user.target" ];
+    pathConfig = {
+      PathExists = pendingSync;
+      Unit = "vaultsync-on-change.service";
+    };
+  };
+  systemd.services.vaultsync-on-change = {
+    description = "Run queued Obsidian vault sync";
+    serviceConfig = {
+      Type = "oneshot";
+      User = "root";
+      Group = "root";
+      ExecStart = syncPending;
+      NoNewPrivileges = true;
+      ProtectSystem = "strict";
+      ProtectHome = true;
+      PrivateTmp = true;
+      CapabilityBoundingSet = "";
+      RestrictAddressFamilies = [ "AF_UNIX" ];
+      ReadWritePaths = [ pendingDir ];
     };
   };
 
