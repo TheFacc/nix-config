@@ -27,10 +27,8 @@
 #  boot.initrd.extraFiles = lib.mkIf (builtins.pathExists ./cryptkey2606) {
 #    "/cryptkey2606".source = builtins.path { path = ./cryptkey2606; };
 #  };
-boot.initrd.secrets."/cryptkey2606" = builtins.path {
-  path = ./cryptkey2606;
-  name = "cryptkey2606";
-};
+# String (not a Nix path): read from nixex's disk at bootloader install, never copied to the store
+boot.initrd.secrets."/cryptkey2606" = "/etc/secrets/initrd/cryptkey2606";
 
 
 
