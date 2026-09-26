@@ -59,7 +59,8 @@
     # Tools
     ../common/optional/openlogi.nix # Logitech Options+ alternative
     ../common/optional/rar.nix # RAR archives
-    # ../common/optional/anydesk.nix # remote desktop - requires x11 for access
+    ../common/optional/services/rustdesk-host.nix # remote desktop host, direct IP over tailscale
+    # ../common/optional/services/anydesk.nix # remote desktop - requires x11 for access
 
     # Web
     ../common/optional/media/persepolis.nix # download manager (~IDM)

@@ -52,7 +52,7 @@
 #     inputs.nur.hmModules.nur
 
 ### temp while offline
-    # ../common/optional/anydesk.nix
+    # ../common/optional/services/anydesk.nix
 
     # copyparty NixOS module
 #    inputs.copyparty.nixosModules.default

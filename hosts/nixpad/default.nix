@@ -68,6 +68,7 @@
     ../common/optional/appimage.nix
     ../common/optional/openlogi.nix # Logitech Options+ alternative
     ../common/optional/rar.nix
+    ../common/optional/services/rustdesk.nix
 
     #################### Users ####################
     ../common/users/facc
