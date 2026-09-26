@@ -2,8 +2,25 @@
 let
   cfg = config.services.jellyfin-backup;
   src = toString cfg.sourceDir;
+  # Paths inside the zip (leading slash stripped) so zip -x matches stored names.
+  sourceRel = lib.removePrefix "/" src;
+  sqliteDataDbs = [
+    "jellyfin.db"
+    "library.db"
+    "playback_reporting.db"
+  ];
   zipExcludeFlags = lib.concatStringsSep "" (
-    map (sub: " -x " + lib.escapeShellArg (src + "/" + sub)) cfg.excludeSuffixes
+    map (sub: " -x " + lib.escapeShellArg (sourceRel + "/" + sub)) cfg.excludeSuffixes
+  );
+  # Live DB + WAL/SHM must not be zipped as-is (inconsistent while Jellyfin runs).
+  zipExcludeSqliteLive = lib.concatStringsSep "" (
+    map (p: " -x " + lib.escapeShellArg p) (
+      lib.concatMap (name: [
+        (sourceRel + "/data/" + name)
+        (sourceRel + "/data/" + name + "-wal")
+        (sourceRel + "/data/" + name + "-shm")
+      ]) sqliteDataDbs
+    )
   );
   ownershipLine =
     if cfg.fileUser == null then
@@ -13,14 +30,38 @@ let
   backupScript = pkgs.writeShellScriptBin "jellyfin-backup" ''
     set -euo pipefail
     SOURCE_DIR=${lib.escapeShellArg src}
+    SOURCE_REL=${lib.escapeShellArg sourceRel}
     BACKUP_DIR=${lib.escapeShellArg cfg.destinationDir}
     DATE=$(date +%Y-%m-%d)
     BACKUP_FILE="$BACKUP_DIR/jellyfin-backup-$DATE.zip"
     KEEP=${toString cfg.keep}
+    SQLITE3=${lib.getExe pkgs.sqlite}
 
     mkdir -p "$BACKUP_DIR"
-    # Overwrite same calendar day if the timer re-runs
-    ${lib.getExe pkgs.zip} -rq "$BACKUP_FILE" "$SOURCE_DIR"${zipExcludeFlags}
+    # Start fresh on same-day re-runs (zip would otherwise append to the old archive)
+    rm -f "$BACKUP_FILE"
+    # Stage next to the backups, DB snapshots can be too big for a tmpfs /tmp
+    STAGE="$(mktemp -d "$BACKUP_DIR/.jellyfin-backup-stage.XXXXXX")"
+    cleanup() { rm -rf "$STAGE"; }
+    trap cleanup EXIT
+
+    # 1) Zip everything except live SQLite DBs + WAL/SHM (paths match archive: $SOURCE_REL/...).
+    ( cd / && ${lib.getExe pkgs.zip} -rq "$BACKUP_FILE" "$SOURCE_REL"${zipExcludeFlags}${zipExcludeSqliteLive} )
+
+    # 2) Consistent SQLite snapshots via .backup, then merge into the same zip.
+    mkdir -p "$STAGE/$SOURCE_REL/data"
+    db_snapped=0
+    for db in ${lib.concatStringsSep " " sqliteDataDbs}; do
+      if [[ -f "$SOURCE_DIR/data/$db" ]]; then
+        dest="$STAGE/$SOURCE_REL/data/$db"
+        printf '.timeout 120000\n.backup %s\n' "$dest" | "$SQLITE3" "$SOURCE_DIR/data/$db" \
+          || { echo "jellyfin-backup: sqlite .backup failed for data/$db (is Jellyfin running and DB readable?)" >&2; exit 1; }
+        db_snapped=1
+      fi
+    done
+    if (( db_snapped )); then
+      ( cd "$STAGE" && ${lib.getExe pkgs.zip} -rq "$BACKUP_FILE" "$SOURCE_REL/data" )
+    fi
 
     ${ownershipLine}
     chmod 664 "$BACKUP_FILE"
@@ -462,7 +503,8 @@ in
         "metadata/People/*"
       ];
       description = ''
-        Path suffixes under sourceDir passed to zip -x.
+        Path suffixes under sourceDir passed to zip -x (relative to the archive root, same as
+        sourceDir without leading slash, e.g. `var/lib/jellyfin/cache/*`).
         Keeps library metadata under metadata/library (and Studio/Genre/etc.) plus data/subtitles.
         Skips logs, cache, Jellyfin’s data/backups zips, and metadata/People (large, usually safe to regenerate).
         Remove the People line if you use custom people images or offline-only metadata.
@@ -551,4 +593,3 @@ in
     };
   };
 }
-
