@@ -4,6 +4,7 @@
     inputs.plasma-manager.homeModules.plasma-manager
 
     ./apps/konsole.nix # Terminal
+    ./apps/dolphin.nix # File manager
     ./apps/kate.nix # Text editor
     ./apps/kcalc.nix # Calculator
 

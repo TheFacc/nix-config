@@ -152,15 +152,8 @@
       # To make Dolphin settings properly declarative later: configure Dolphin
       # by hand on the real machine, then inspect the exact generated keys with:
       #   grep -n . ~/.config/dolphinrc ~/.config/kdeglobals ~/.config/kiorc
-      # Copy only the settings you want to keep into this block.
-      text = lib.generators.toINI { } {
-        General = {
-          BrowseThroughArchives = true;
-          EditableUrl = true;
-          ShowFullPath = true;
-          ShowSelectionToggle = true;
-        };
-      };
+      # Copy only the settings you want to keep into the shared dolphinrc.nix.
+      text = lib.generators.toINI { } (import common/optional/desktops/dolphinrc.nix);
     };
 
     # DMS shell settings workflow for the real machine:
