@@ -112,7 +112,10 @@
   users.groups.media = {};
 
   services.jellyfin-backup.enable = true;
-  services.vault-snapshot.enable = true;
+  services.vault-snapshot = {
+    enable = true;
+    offsite.enable = true; # needs the `vaulthistory` crypt remote in rclone.conf, see module
+  };
 
   boot = {
     loader = {

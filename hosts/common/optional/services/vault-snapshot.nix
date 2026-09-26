@@ -3,6 +3,8 @@
 #   vault-git log --stat
 #   vault-git diff HEAD~3 -- Hermes/
 #   vault-git restore --source=<rev> -- path/to/note.md
+# Offsite (optional): daily `git bundle` of the whole history -> rclone crypt remote, never the vault's own remote.
+#   Restore: rclone copy <remote>vault.bundle . && git clone vault.bundle
 { config, lib, pkgs, ... }:
 let
   cfg = config.services.vault-snapshot;
@@ -21,6 +23,16 @@ let
     printf '%s\n' ${lib.escapeShellArgs cfg.excludes} > ${cfg.repoDir}/info/exclude
     ${git} ${gitFlags} add -A
     ${git} ${gitFlags} diff --cached --quiet || ${git} ${gitFlags} commit -q -m "snapshot $(date -Is)"
+  '';
+  offsiteScript = pkgs.writeShellScript "vault-snapshot-offsite" ''
+    set -euo pipefail
+    bundle=/tmp/vault.bundle
+    ${git} -c 'safe.directory=*' --git-dir=${cfg.repoDir} bundle create -q "$bundle" --all
+    # never overwrite a good offsite copy with junk
+    ${git} -c 'safe.directory=*' --git-dir=${cfg.repoDir} bundle verify -q "$bundle"
+    ${pkgs.rclone}/bin/rclone copyto "$bundle" ${lib.escapeShellArg "${cfg.offsite.remote}vault.bundle"} \
+      --config ${cfg.offsite.rcloneConfig} --cache-dir /tmp/rclone-cache \
+      --timeout 60s --retries 3 --retries-sleep 10s
   '';
   # Run as cfg.user so restores keep the vault's ownership/perms
   vaultGit = pkgs.writeShellScriptBin "vault-git" ''
@@ -64,6 +76,24 @@ in
       type = lib.types.str;
       default = "hourly";
       description = "systemd OnCalendar for snapshots.";
+    };
+    offsite = {
+      enable = lib.mkEnableOption "daily encrypted offsite copy of the history (git bundle via rclone)";
+      remote = lib.mkOption {
+        type = lib.types.str;
+        default = "vaulthistory:";
+        description = "rclone remote (+ path ending in / or :) for vault.bundle; must NOT be inside the vault's sync remote.";
+      };
+      rcloneConfig = lib.mkOption {
+        type = lib.types.str;
+        default = "/var/lib/vaultsync/rclone.conf";
+        description = "rclone.conf holding the remote, readable by user.";
+      };
+      calendar = lib.mkOption {
+        type = lib.types.str;
+        default = "daily";
+        description = "systemd OnCalendar for offsite uploads.";
+      };
     };
   };
 
@@ -111,6 +141,47 @@ in
         CapabilityBoundingSet = "";
         ReadWritePaths = [ (dirOf cfg.repoDir) ]
           ++ lib.optional (cfg.lockFile != null) (dirOf cfg.lockFile);
+        UMask = "0077";
+      };
+    };
+
+    systemd.timers.vault-snapshot-offsite = lib.mkIf cfg.offsite.enable {
+      wantedBy = [ "timers.target" ];
+      timerConfig = {
+        OnCalendar = cfg.offsite.calendar;
+        RandomizedDelaySec = "30min";
+        Persistent = true;
+        Unit = "vault-snapshot-offsite.service";
+      };
+    };
+
+    systemd.services.vault-snapshot-offsite = lib.mkIf cfg.offsite.enable {
+      description = "Upload encrypted git bundle of the vault history";
+      after = [ "network-online.target" "vault-snapshot.service" ];
+      wants = [ "network-online.target" ];
+      serviceConfig = {
+        Type = "oneshot";
+        User = cfg.user;
+        Group = cfg.group;
+        ExecStart = offsiteScript;
+
+        # Hardening: read-only everywhere, no vault access, network only for rclone
+        NoNewPrivileges = true;
+        PrivateTmp = true;
+        ProtectSystem = "strict";
+        ProtectHome = true;
+        ProtectControlGroups = true;
+        ProtectKernelTunables = true;
+        ProtectKernelModules = true;
+        ProtectKernelLogs = true;
+        ProtectClock = true;
+        RestrictRealtime = true;
+        RestrictSUIDSGID = true;
+        LockPersonality = true;
+        MemoryDenyWriteExecute = true;
+        CapabilityBoundingSet = "";
+        RestrictAddressFamilies = [ "AF_UNIX" "AF_INET" "AF_INET6" ];
+        InaccessiblePaths = [ cfg.vaultDir ];
         UMask = "0077";
       };
     };
