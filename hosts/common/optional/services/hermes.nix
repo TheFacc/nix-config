@@ -16,7 +16,7 @@
 #
 # One-time, imperative (credentials persist in /var/lib/hermes/.hermes/auth.json):
 #   sudo -u hermes env HERMES_HOME=/var/lib/hermes/.hermes hermes auth add openai-codex
-#   then pick the model with /model (Telegram, dashboard, or `hermes` TUI as above)
+#   The default model is configured below; /model can switch individual sessions.
 { inputs, config, lib, ... }:
 let
   inherit (config.networking) hostName;
@@ -49,8 +49,9 @@ in
     addToSystemPackages = true; # `hermes` CLI + HERMES_HOME system-wide
 
     settings = {
-      model.provider = "openai-codex"; # model.default left to runtime (/model) on purpose
-      terminal.backend = "local";      # runs as the hermes user, inside the sandbox
+      model.provider = "openai-codex";
+      model.default = "gpt-6-sol";
+      terminal.backend = "local"; # runs as the hermes user, inside the sandbox
     };
 
     backend = {
