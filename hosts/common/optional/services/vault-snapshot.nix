@@ -1,13 +1,20 @@
-# Periodic git snapshots of the Obsidian vault: an undo button for bad edits (agents, sync conflicts, me)
-# The repo lives OUTSIDE the vault (not synced, not readable by hermes); only cfg.user can write it.
+# Periodic Git snapshots of the Obsidian vault plus custom Hermes commits on a separate branch.
+# The bare repo lives outside the vault and is not readable by Hermes; generated diffs are.
 #   vault-git log --stat
-#   vault-git diff HEAD~3 -- Hermes/
+#   vault-git log --all --stat
 #   vault-git restore --source=<rev> -- path/to/note.md
 # Offsite (optional): daily `git bundle` of the whole history -> rclone crypt remote, never the vault's own remote.
 #   Restore: rclone copy <remote>vault.bundle . && git clone vault.bundle
 { config, lib, pkgs, ... }:
 let
   cfg = config.services.vault-snapshot;
+  hermesEnabled = config.services.hermes-agent.enable or false;
+  historyDir = "/var/lib/vault-history";
+  requestDir = "/run/vault-save-request";
+  readyDir = "${requestDir}/ready";
+  stagingDir = "${requestDir}/staging";
+  resultsDir = "${requestDir}/results";
+  messageFile = "${requestDir}/message";
   git = lib.getExe pkgs.git;
   gitFlags = lib.escapeShellArgs [
     "-C" cfg.vaultDir # else git resolves .gitattributes/.mailmap against the caller's cwd
@@ -19,10 +26,113 @@ let
   ];
   snapshotScript = pkgs.writeShellScript "vault-snapshot" ''
     set -euo pipefail
+    message="''${1:-snapshot $(date -Is)}"
     [ -f ${cfg.repoDir}/HEAD ] || ${git} init -q --bare ${cfg.repoDir}
     printf '%s\n' ${lib.escapeShellArgs cfg.excludes} > ${cfg.repoDir}/info/exclude
-    ${git} ${gitFlags} add -A
-    ${git} ${gitFlags} diff --cached --quiet || ${git} ${gitFlags} commit -q -m "snapshot $(date -Is)"
+    if [[ $# -eq 0 ]]; then
+      ${git} ${gitFlags} add -A
+      ${git} ${gitFlags} diff --cached --quiet || ${git} ${gitFlags} commit -q -m "$message"
+    else
+      # A separate ref preserves the requested message even if the hourly job
+      # already snapshotted the same files on the main branch.
+      ${pkgs.python3}/bin/python3 ${./vault_history.py} commit-hermes --git-bin ${git} -- \
+        ${lib.escapeShellArg cfg.repoDir} ${lib.escapeShellArg cfg.vaultDir} "$message" \
+        ${lib.escapeShellArg "vault-snapshot@${config.networking.hostName}"}
+    fi
+    ${pkgs.python3}/bin/python3 ${./vault_history.py} render \
+      ${lib.escapeShellArg cfg.repoDir} ${lib.escapeShellArg cfg.vaultDir} ${historyDir} --git-bin ${git}
+  '';
+  saveRequest = pkgs.writeShellScriptBin "vault-save" ''
+    set -euo pipefail
+    if [[ $# -ne 1 ]]; then
+      echo 'Usage: vault-save "one-line commit message"' >&2
+      exit 2
+    fi
+    if [[ -z "$1" || "$1" == *[$'\001'-$'\037']* ]]; then
+      echo 'Usage: vault-save "one-line commit message"' >&2
+      exit 2
+    fi
+    if (( $(printf %s "$1" | ${pkgs.coreutils}/bin/wc -c) > 120 )); then
+      echo 'Commit message must be at most 120 bytes' >&2
+      exit 2
+    fi
+    request=$(${pkgs.coreutils}/bin/mktemp ${stagingDir}/request.XXXXXX)
+    trap '${pkgs.coreutils}/bin/rm -f "$request"' EXIT
+    printf '%s' "$1" > "$request"
+    result=${resultsDir}/''${request##*/}
+    ${pkgs.coreutils}/bin/mv "$request" ${readyDir}/
+    trap - EXIT
+    for ((i = 0; i < 900; i++)); do
+      if [[ -f "$result" ]]; then
+        status=$(${pkgs.coreutils}/bin/cat "$result")
+        if [[ "$status" == OK ]]; then
+          echo 'Vault synced and diff viewer updated (changes committed if present)'
+          if [[ -n "''${HERMES_DASHBOARD_PUBLIC_URL:-}" ]]; then
+            echo "''${HERMES_DASHBOARD_PUBLIC_URL%/}/diffs/"
+          fi
+          exit 0
+        fi
+        if [[ "$status" == SYNC_FAILED ]]; then
+          echo 'Vault committed locally and diff viewer updated; sync failed and its timer will retry' >&2
+          if [[ -n "''${HERMES_DASHBOARD_PUBLIC_URL:-}" ]]; then
+            echo "''${HERMES_DASHBOARD_PUBLIC_URL%/}/diffs/"
+          fi
+          exit 1
+        fi
+        echo 'Vault save failed; check vault-save-request.service' >&2
+        exit 1
+      fi
+      ${pkgs.coreutils}/bin/sleep 1
+    done
+    echo 'Timed out waiting for vault save' >&2
+    exit 1
+  '';
+  processRequest = pkgs.writeShellScript "vault-save-process-request" ''
+    set -euo pipefail
+    for request in ${readyDir}/request.*; do
+      [[ -e "$request" || -L "$request" ]] || continue
+      result=${resultsDir}/''${request##*/}
+      # Read as hermes, so a malicious symlink cannot make root read a secret.
+      if [[ -L "$request" ]]; then
+        ${pkgs.coreutils}/bin/rm -f -- "$request"
+        printf ERROR > "$result"
+        continue
+      fi
+      if ! message=$(${pkgs.coreutils}/bin/timeout 5 \
+        ${pkgs.util-linux}/bin/runuser -u hermes -- ${pkgs.coreutils}/bin/head -c 121 -- "$request"); then
+        ${pkgs.coreutils}/bin/rm -f -- "$request"
+        printf ERROR > "$result"
+        continue
+      fi
+      ${pkgs.coreutils}/bin/rm -f -- "$request"
+      if [[ -z "$message" || "$message" == *[$'\001'-$'\037']* ]] || \
+         (( $(printf %s "$message" | ${pkgs.coreutils}/bin/wc -c) > 120 )); then
+        echo 'Invalid vault-save message' >&2
+        printf ERROR > "$result"
+        continue
+      fi
+      ${pkgs.coreutils}/bin/install -o ${cfg.user} -g ${cfg.group} -m 0600 /dev/null ${messageFile}
+      printf '%s' "$message" > ${messageFile}
+      sync_ok=true
+      if ! ${pkgs.systemd}/bin/systemctl start vaultsync.service; then
+        sync_ok=false
+      fi
+      if ${pkgs.systemd}/bin/systemctl start vault-snapshot-requested.service; then
+        if [[ "$sync_ok" == true ]]; then
+          printf OK > "$result"
+        else
+          printf SYNC_FAILED > "$result"
+        fi
+      else
+        printf ERROR > "$result"
+      fi
+      ${pkgs.coreutils}/bin/rm -f ${messageFile}
+    done
+  '';
+  requestedSnapshot = pkgs.writeShellScript "vault-snapshot-requested" ''
+    set -euo pipefail
+    message=$(${pkgs.coreutils}/bin/cat ${messageFile})
+    exec ${snapshotScript} "$message"
   '';
   offsiteScript = pkgs.writeShellScript "vault-snapshot-offsite" ''
     set -euo pipefail
@@ -98,10 +208,21 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    environment.systemPackages = [ vaultGit ];
+    environment.systemPackages = [ vaultGit ] ++ lib.optional hermesEnabled saveRequest;
+
+    users.groups.vault-history = {};
+    users.users = { ${cfg.user}.extraGroups = [ "vault-history" ]; } // lib.optionalAttrs hermesEnabled {
+      hermes.extraGroups = [ "vault-history" ];
+    };
 
     systemd.tmpfiles.rules = [
       "d ${dirOf cfg.repoDir} 0700 ${cfg.user} ${cfg.group} - -"
+      "d ${historyDir} 2750 ${cfg.user} vault-history - -"
+    ] ++ lib.optionals hermesEnabled [
+      "d ${requestDir} 0711 root root - -"
+      "d ${readyDir} 0700 hermes hermes - -"
+      "d ${stagingDir} 0700 hermes hermes - -"
+      "d ${resultsDir} 2750 root hermes - -"
     ];
 
     systemd.timers.vault-snapshot = {
@@ -139,9 +260,52 @@ in
         RestrictSUIDSGID = true;
         LockPersonality = true;
         CapabilityBoundingSet = "";
-        ReadWritePaths = [ (dirOf cfg.repoDir) ]
+        ReadWritePaths = [ (dirOf cfg.repoDir) historyDir ]
           ++ lib.optional (cfg.lockFile != null) (dirOf cfg.lockFile);
         UMask = "0077";
+      };
+    };
+
+    systemd.services.vault-snapshot-requested = lib.mkIf hermesEnabled {
+      description = "Requested Git snapshot of the Obsidian vault";
+      serviceConfig = {
+        Type = "oneshot";
+        User = cfg.user;
+        Group = cfg.group;
+        ExecStart =
+          if cfg.lockFile == null then requestedSnapshot
+          else "${pkgs.util-linux}/bin/flock -w 600 ${cfg.lockFile} ${requestedSnapshot}";
+        NoNewPrivileges = true;
+        PrivateTmp = true;
+        PrivateNetwork = true;
+        ProtectSystem = "strict";
+        ProtectHome = true;
+        ReadWritePaths = [ (dirOf cfg.repoDir) historyDir ]
+          ++ lib.optional (cfg.lockFile != null) (dirOf cfg.lockFile);
+        UMask = "0077";
+      };
+    };
+    systemd.paths.vault-save-request = lib.mkIf hermesEnabled {
+      wantedBy = [ "multi-user.target" ];
+      after = [ "systemd-tmpfiles-setup.service" ];
+      pathConfig = {
+        DirectoryNotEmpty = readyDir;
+        Unit = "vault-save-request.service";
+      };
+    };
+    systemd.services.vault-save-request = lib.mkIf hermesEnabled {
+      description = "Run vault sync and snapshot requested by Hermes";
+      serviceConfig = {
+        Type = "oneshot";
+        User = "root";
+        ExecStart = processRequest;
+        NoNewPrivileges = true;
+        ProtectSystem = "strict";
+        ProtectHome = true;
+        PrivateTmp = true;
+        RestrictAddressFamilies = [ "AF_UNIX" ];
+        ReadWritePaths = [ requestDir ];
+        UMask = "0027";
       };
     };
 

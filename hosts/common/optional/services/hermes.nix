@@ -17,13 +17,15 @@
 # One-time, imperative (credentials persist in /var/lib/hermes/.hermes/auth.json):
 #   sudo -u hermes env HERMES_HOME=/var/lib/hermes/.hermes hermes auth add openai-codex
 #   The default model is configured below; /model can switch individual sessions.
-{ inputs, config, lib, ... }:
+{ inputs, config, lib, pkgs, ... }:
 let
   inherit (config.networking) hostName;
   nixexSops = (hostName == "nixex" && config.local.hasSopsSecrets);
   cfg = config.services.hermes-agent;
   vaultPath = "/var/lib/obsidian-vault"; # see vaultsync.nix
   writableVaultDirs = [ "Hermes" ];
+  historyDir = "/var/lib/vault-history";
+  requestDir = "/run/vault-save-request";
   hermesUnits = [ "hermes-agent" "hermes-backend" ];
   hardening = {
     # upstream leaves /home readable; not ProtectHome=true, it also hides /run/user (cron needs the user bus)
@@ -38,7 +40,7 @@ let
     RestrictSUIDSGID = true;
     LockPersonality = true;
     CapabilityBoundingSet = "";
-    ReadWritePaths = map (d: "${vaultPath}/${d}") writableVaultDirs;
+    ReadWritePaths = (map (d: "${vaultPath}/${d}") writableVaultDirs) ++ [ requestDir ];
   };
 in
 {
@@ -77,12 +79,44 @@ in
       - Keep `Hermes/Dashboard.md` up to date: open tasks by priority/area, upcoming deadlines,
         waiting-for, and a short "focus today" list.
       - When I say "remind me …", create the task in the vault AND schedule a cron reminder.
+      - When an edit is ready for review, run `/run/current-system/sw/bin/vault-save "short summary"`
+        once. It waits for a vault sync, commits any changes with that message, and refreshes
+        the diff viewer. Send me the URL printed by the command when it succeeds.
+        If the command says it committed locally but sync failed, send the URL with that warning;
+        the periodic vault sync will retry.
+        Hourly snapshots still back up the whole vault; your message is on a separate Hermes branch.
+      - You can read the generated, read-only vault history at ${historyDir}.
+        The viewer is at the dashboard URL under `/diffs/`.
     '';
   };
 
   # Extra hardening on top of upstream (NoNewPrivileges, ProtectSystem=strict, PrivateTmp)
   systemd.services.hermes-agent.serviceConfig = hardening;
   systemd.services.hermes-backend.serviceConfig = hardening;
+
+  users.users.vault-history-web = {
+    isSystemUser = true;
+    group = "vault-history";
+  };
+  systemd.services.vault-history-web = lib.mkIf nixexSops {
+    description = "Authenticated read-only vault diff viewer";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "systemd-tmpfiles-setup.service" ];
+    serviceConfig = {
+      Type = "simple";
+      User = "vault-history-web";
+      Group = "vault-history";
+      EnvironmentFile = config.sops.templates."vault-history-auth".path;
+      ExecStart = "${pkgs.python3}/bin/python3 ${./vault_history.py} serve ${historyDir} --port 9121";
+      Restart = "on-failure";
+      NoNewPrivileges = true;
+      ProtectSystem = "strict";
+      ProtectHome = true;
+      PrivateTmp = true;
+      CapabilityBoundingSet = "";
+      RestrictAddressFamilies = [ "AF_INET" "AF_UNIX" ];
+    };
+  };
 
   # Vault access via ACLs (not the `vault` group, which is read-write):
   # read-only on everything, read-write on writableVaultDirs; default ACLs cover new files from sync.
@@ -113,6 +147,13 @@ in
       HERMES_DASHBOARD_BASIC_AUTH_SECRET=${p."services/hermes/dashboard_secret"}
     '';
   };
+  sops.templates."vault-history-auth" = lib.mkIf nixexSops {
+    restartUnits = [ "vault-history-web.service" ];
+    content = let p = config.sops.placeholder; in ''
+      HERMES_DASHBOARD_BASIC_AUTH_USERNAME=facc
+      HERMES_DASHBOARD_BASIC_AUTH_PASSWORD=${p."services/hermes/dashboard_password"}
+    '';
+  };
 
   # Caddy (same pattern as n8n.nix: Tailscale machine certs)
   # public_url above makes the dashboard accept the tailnet Host/Origin and enables its login gate.
@@ -125,7 +166,13 @@ in
       publicPort = config.sops.placeholder."services/hermes/public_port";
     in ''
       https://${hostName}.${t}.ts.net:${publicPort} {
-        reverse_proxy 127.0.0.1:${toString cfg.backend.port}
+        redir /diffs /diffs/ 308
+        handle_path /diffs/* {
+          reverse_proxy 127.0.0.1:9121
+        }
+        handle {
+          reverse_proxy 127.0.0.1:${toString cfg.backend.port}
+        }
       }
     '';
   };

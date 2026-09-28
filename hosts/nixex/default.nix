@@ -40,7 +40,7 @@
 #    ../common/optional/services/automount.nix
     ../common/optional/services/n8n.nix # n8n
     ../common/optional/services/vaultsync.nix # obsidian vault headless sync
-    ../common/optional/services/vault-snapshot.nix # hourly git history of the vault (services.vault-snapshot)
+    ../common/optional/services/vault-snapshot.nix # hourly vault history; Hermes can add named commits
     ../common/optional/services/hermes.nix # Hermes agent: vault assistant, Telegram + dashboard
     ../common/optional/notesmd.nix            # obsidian notes CLI editor
     ../common/optional/serverr/mediastorage.nix # mergerfs
