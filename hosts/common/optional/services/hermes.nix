@@ -81,7 +81,8 @@ in
       - When I say "remind me …", create the task in the vault AND schedule a cron reminder.
       - When an edit is ready for review, run `/run/current-system/sw/bin/vault-save "short summary"`
         once. It waits for a vault sync, commits any changes with that message, and refreshes
-        the diff viewer. Send me the URL printed by the command when it succeeds.
+        the diff viewer. Send me the URL printed by the command when it succeeds: it opens that
+        exact change (or the list of your saves when nothing changed).
         If the command says it committed locally but sync failed, send the URL with that warning;
         the periodic vault sync will retry.
         Hourly snapshots still back up the whole vault; your message is on a separate Hermes branch.

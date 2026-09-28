@@ -15,6 +15,7 @@ let
   stagingDir = "${requestDir}/staging";
   resultsDir = "${requestDir}/results";
   messageFile = "${requestDir}/message";
+  hermesRef = "refs/heads/hermes"; # see vault_history.py
   git = lib.getExe pkgs.git;
   gitFlags = lib.escapeShellArgs [
     "-C" cfg.vaultDir # else git resolves .gitattributes/.mailmap against the caller's cwd
@@ -29,6 +30,8 @@ let
     message="''${1:-snapshot $(date -Is)}"
     [ -f ${cfg.repoDir}/HEAD ] || ${git} init -q --bare ${cfg.repoDir}
     printf '%s\n' ${lib.escapeShellArgs cfg.excludes} > ${cfg.repoDir}/info/exclude
+    # Git's markdown driver labels diff hunks with the nearest heading
+    printf '*.md diff=markdown\n' > ${cfg.repoDir}/info/attributes
     if [[ $# -eq 0 ]]; then
       ${git} ${gitFlags} add -A
       ${git} ${gitFlags} diff --cached --quiet || ${git} ${gitFlags} commit -q -m "$message"
@@ -64,19 +67,32 @@ let
     trap - EXIT
     for ((i = 0; i < 900; i++)); do
       if [[ -f "$result" ]]; then
-        status=$(${pkgs.coreutils}/bin/cat "$result")
-        if [[ "$status" == OK ]]; then
-          echo 'Vault synced and diff viewer updated (changes committed if present)'
-          if [[ -n "''${HERMES_DASHBOARD_PUBLIC_URL:-}" ]]; then
-            echo "''${HERMES_DASHBOARD_PUBLIC_URL%/}/diffs/"
+        read -r status commit < "$result" || true
+        # Link straight to the new commit, or to the Hermes list when nothing changed
+        url=""
+        if [[ -n "''${HERMES_DASHBOARD_PUBLIC_URL:-}" ]]; then
+          if [[ "$commit" =~ ^[0-9a-f]{40,64}$ ]]; then
+            url="''${HERMES_DASHBOARD_PUBLIC_URL%/}/diffs/$commit.html"
+          else
+            url="''${HERMES_DASHBOARD_PUBLIC_URL%/}/diffs/hermes.html"
           fi
+        fi
+        if [[ "$status" == OK ]]; then
+          if [[ -n "$commit" ]]; then
+            echo 'Vault synced, changes committed and diff viewer updated'
+          else
+            echo 'Vault synced; nothing changed since the last save'
+          fi
+          [[ -z "$url" ]] || echo "$url"
           exit 0
         fi
         if [[ "$status" == SYNC_FAILED ]]; then
-          echo 'Vault committed locally and diff viewer updated; sync failed and its timer will retry' >&2
-          if [[ -n "''${HERMES_DASHBOARD_PUBLIC_URL:-}" ]]; then
-            echo "''${HERMES_DASHBOARD_PUBLIC_URL%/}/diffs/"
+          if [[ -n "$commit" ]]; then
+            echo 'Vault committed locally and diff viewer updated; sync failed and its timer will retry' >&2
+          else
+            echo 'Vault sync failed and its timer will retry; nothing changed since the last save' >&2
           fi
+          [[ -z "$url" ]] || echo "$url"
           exit 1
         fi
         echo 'Vault save failed; check vault-save-request.service' >&2
@@ -89,42 +105,56 @@ let
   '';
   processRequest = pkgs.writeShellScript "vault-save-process-request" ''
     set -euo pipefail
+    # As the repo owner: root must not run git on a repo another user can write
+    hermes_ref() {
+      ${pkgs.util-linux}/bin/runuser -u ${cfg.user} -- ${pkgs.coreutils}/bin/env HOME=/var/empty \
+        ${git} --git-dir=${cfg.repoDir} rev-parse -q --verify ${hermesRef} || true
+    }
+    # Atomic, so the polling client never reads a half-written result
+    finish() {
+      printf '%s' "$1" > "$result.tmp"
+      ${pkgs.coreutils}/bin/mv -f -- "$result.tmp" "$result"
+    }
     for request in ${readyDir}/request.*; do
       [[ -e "$request" || -L "$request" ]] || continue
       result=${resultsDir}/''${request##*/}
       # Read as hermes, so a malicious symlink cannot make root read a secret.
       if [[ -L "$request" ]]; then
         ${pkgs.coreutils}/bin/rm -f -- "$request"
-        printf ERROR > "$result"
+        finish ERROR
         continue
       fi
       if ! message=$(${pkgs.coreutils}/bin/timeout 5 \
         ${pkgs.util-linux}/bin/runuser -u hermes -- ${pkgs.coreutils}/bin/head -c 121 -- "$request"); then
         ${pkgs.coreutils}/bin/rm -f -- "$request"
-        printf ERROR > "$result"
+        finish ERROR
         continue
       fi
       ${pkgs.coreutils}/bin/rm -f -- "$request"
       if [[ -z "$message" || "$message" == *[$'\001'-$'\037']* ]] || \
          (( $(printf %s "$message" | ${pkgs.coreutils}/bin/wc -c) > 120 )); then
         echo 'Invalid vault-save message' >&2
-        printf ERROR > "$result"
+        finish ERROR
         continue
       fi
       ${pkgs.coreutils}/bin/install -o ${cfg.user} -g ${cfg.group} -m 0600 /dev/null ${messageFile}
       printf '%s' "$message" > ${messageFile}
+      before=$(hermes_ref)
       sync_ok=true
       if ! ${pkgs.systemd}/bin/systemctl start vaultsync.service; then
         sync_ok=false
       fi
       if ${pkgs.systemd}/bin/systemctl start vault-snapshot-requested.service; then
+        after=$(hermes_ref)
+        commit=""
+        [[ "$after" == "$before" ]] || commit=$after
         if [[ "$sync_ok" == true ]]; then
-          printf OK > "$result"
+          finish "OK $commit"
         else
-          printf SYNC_FAILED > "$result"
+          finish "SYNC_FAILED $commit"
         fi
       else
-        printf ERROR > "$result"
+        finish ERROR
       fi
       ${pkgs.coreutils}/bin/rm -f ${messageFile}
     done
