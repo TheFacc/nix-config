@@ -105,10 +105,18 @@ let
   '';
   processRequest = pkgs.writeShellScript "vault-save-process-request" ''
     set -euo pipefail
+    # Run a short command as another user via PID 1: inside this sandbox runuser's setuid()
+    # fails with EPERM, and a transient unit also sandboxes the helper and bounds its runtime.
+    as_user() {
+      local user=$1
+      shift
+      ${pkgs.coreutils}/bin/timeout 10 ${pkgs.systemd}/bin/systemd-run --quiet --wait --pipe --collect \
+        --uid="$user" -p NoNewPrivileges=yes -p PrivateNetwork=yes -p ProtectSystem=strict \
+        -p ProtectHome=yes -p RuntimeMaxSec=5 -E HOME=/var/empty -- "$@"
+    }
     # As the repo owner: root must not run git on a repo another user can write
     hermes_ref() {
-      ${pkgs.util-linux}/bin/runuser -u ${cfg.user} -- ${pkgs.coreutils}/bin/env HOME=/var/empty \
-        ${git} --git-dir=${cfg.repoDir} rev-parse -q --verify ${hermesRef} || true
+      as_user ${cfg.user} ${git} --git-dir=${cfg.repoDir} rev-parse -q --verify ${hermesRef} || true
     }
     # Atomic, so the polling client never reads a half-written result
     finish() {
@@ -124,8 +132,7 @@ let
         finish ERROR
         continue
       fi
-      if ! message=$(${pkgs.coreutils}/bin/timeout 5 \
-        ${pkgs.util-linux}/bin/runuser -u hermes -- ${pkgs.coreutils}/bin/head -c 121 -- "$request"); then
+      if ! message=$(as_user hermes ${pkgs.coreutils}/bin/head -c 121 -- "$request"); then
         ${pkgs.coreutils}/bin/rm -f -- "$request"
         finish ERROR
         continue
