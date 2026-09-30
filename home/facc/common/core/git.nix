@@ -8,7 +8,7 @@ in
     settings = {
       init.defaultBranch = "main";
       user.name = "TheFacc";
-      core.sshCommand = "ssh -F /dev/null -i ~/.ssh/id_facc -o IdentitiesOnly=yes";  # -F: sandboxes see ~/.ssh/config as nobody-owned and ssh rejects it
+      core.sshCommand = "ssh -F ~/.ssh/config -i ~/.ssh/id_facc -o IdentitiesOnly=yes";  # -F: explicit config skips the owner check that fails in user namespaces
       url."git@github.com:".insteadOf = "https://github.com/";  # HTTPS remotes use your key too
     };
     ignores = [ ".direnv" "result" ];
@@ -24,7 +24,7 @@ in
         condition = work;
         contents = {
           user.name = "Alessio-Becquerel";
-          core.sshCommand = "ssh -F /dev/null -i ~/.ssh/id_becq -o IdentitiesOnly=yes";
+          core.sshCommand = "ssh -F ~/.ssh/config -i ~/.ssh/id_becq -o IdentitiesOnly=yes";
         };
       }]
       ++ lib.optionals sops [ { condition = work; path = os.sops.templates."git-user-becq-email".path; } ];

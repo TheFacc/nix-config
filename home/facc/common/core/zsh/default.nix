@@ -91,6 +91,11 @@
       rg = "batgrep";
       man = "batman";
 
+      # ~/.ssh/config is a nix-store symlink; in user namespaces (AppImages via
+      # bwrap, agent sandboxes) root is unmapped, it looks nobody-owned and ssh
+      # rejects it. The owner check only applies to the implicit config, not -F.
+      ssh = "ssh -F ~/.ssh/config";
+
       #------------Navigation------------
       doc = "cd $HOME/documents";
       scripts = "cd $HOME/scripts";
