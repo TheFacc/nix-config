@@ -52,7 +52,7 @@ in
 
     settings = {
       model.provider = "openai-codex";
-      model.default = "gpt-6-sol";
+      model.default = "gpt-6.1-sol";
       terminal.backend = "local"; # runs as the hermes user, inside the sandbox
     };
 
@@ -125,7 +125,8 @@ in
     "A+ ${vaultPath} - - - - u:${cfg.user}:rX,d:u:${cfg.user}:rX"
   ] ++ lib.concatMap (d: [
     "d ${vaultPath}/${d} 2770 vaultsync vault - -"
-    "A+ ${vaultPath}/${d} - - - - u:${cfg.user}:rwX,d:u:${cfg.user}:rwX"
+    # group/mask defaults keep new files writable by vaultsync (vault group) unless a tool forces a mode
+    "A+ ${vaultPath}/${d} - - - - u:${cfg.user}:rwX,d:u:${cfg.user}:rwX,g::rwX,d:g::rwX,m::rwX,d:m::rwX"
   ]) writableVaultDirs;
 
   # Secrets -> $HERMES_HOME/.env (written by the hermes activation script)
