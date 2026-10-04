@@ -27,6 +27,12 @@ let
   historyDir = "/var/lib/vault-history";
   requestDir = "/run/vault-save-request";
   hermesUnits = [ "hermes-agent" "hermes-backend" ];
+  vaultConsumers = map (u: "${u}.service") (hermesUnits ++ [ "vaultsync" "n8n" ]);
+  vaultAcl = pkgs.writeShellApplication {
+    name = "hermes-vault-acl";
+    runtimeInputs = [ pkgs.acl pkgs.findutils ];
+    text = builtins.readFile ./vault-acl.sh;
+  };
   hardening = {
     # upstream leaves /home readable; not ProtectHome=true, it also hides /run/user (cron needs the user bus)
     InaccessiblePaths = [ "-/home" "-/root" ];
@@ -119,15 +125,33 @@ in
     };
   };
 
-  # Vault access via ACLs (not the `vault` group, which is read-write):
-  # read-only on everything, read-write on writableVaultDirs; default ACLs cover new files from sync.
-  systemd.tmpfiles.rules = [
-    "A+ ${vaultPath} - - - - u:${cfg.user}:rX,d:u:${cfg.user}:rX"
-  ] ++ lib.concatMap (d: [
+  systemd.tmpfiles.rules = map (d:
     "d ${vaultPath}/${d} 2770 vaultsync vault - -"
-    # group/mask defaults keep new files writable by vaultsync (vault group) unless a tool forces a mode
-    "A+ ${vaultPath}/${d} - - - - u:${cfg.user}:rwX,d:u:${cfg.user}:rwX,g::rwX,d:g::rwX,m::rwX,d:m::rwX"
-  ]) writableVaultDirs;
+  ) writableVaultDirs;
+
+  # Apply ACLs after directory creation and before any vault consumer starts.
+  # Explicit defaults keep the vault group writable; mode-aware file ACLs avoid
+  # turning inherited, non-executable notes into executables on repeated setup.
+  systemd.services.hermes-vault-acl = {
+    description = "Set Obsidian vault access for Hermes and the vault group";
+    # Wants, not Requires: missing ACLs only deny Hermes access, and Requires would
+    # keep Hermes down after a failed walk or propagate a stop on switch
+    wantedBy = [ "multi-user.target" ] ++ vaultConsumers;
+    before = vaultConsumers;
+    after = [ "systemd-tmpfiles-setup.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = "${lib.getExe vaultAcl} ${lib.escapeShellArgs ([ vaultPath cfg.user ] ++ writableVaultDirs)}";
+      NoNewPrivileges = true;
+      ProtectSystem = "strict";
+      ProtectHome = true;
+      PrivateTmp = true;
+      # CAP_FSETID: else setfacl clears setgid on dirs (caller not in vault group)
+      CapabilityBoundingSet = [ "CAP_DAC_READ_SEARCH" "CAP_FOWNER" "CAP_FSETID" ];
+      ReadWritePaths = [ vaultPath ];
+    };
+  };
 
   # Secrets -> $HERMES_HOME/.env (written by the hermes activation script)
   sops.secrets = lib.mkIf nixexSops {

@@ -49,15 +49,11 @@ let
   # Hermes can write here, so never follow symlinks: -execdir (no parent swap), chgrp -h, setfacl -P
   # (skips symlink args). Files vanishing mid-run make find fail; ExecStartPre's "-" ignores that.
   # No g+s step: RestrictSUIDSGID forbids it, and new subdirs inherit setgid anyway.
-  fixHermesPerms = pkgs.writeShellScript "vaultsync-fix-hermes-perms" ''
-    set -uo pipefail
-    dir=${lib.escapeShellArg "${vaultPath}/Hermes"}
-    [[ -d "$dir" ]] || exit 0
-    ${pkgs.findutils}/bin/find "$dir" ! -type l \
-      \( ! -group vault -o \( -type d ! -perm -g=rwx \) -o \( ! -type d ! -perm -g=rw \) \) \
-      -execdir ${pkgs.coreutils}/bin/chgrp -h vault {} + \
-      -execdir ${pkgs.acl}/bin/setfacl -P -m g::rwX,m::rwX {} +
-  '';
+  fixHermesPerms = pkgs.writeShellApplication {
+    name = "vaultsync-fix-hermes-perms";
+    runtimeInputs = [ pkgs.findutils pkgs.coreutils pkgs.acl ];
+    text = builtins.readFile ./vault-group-perms.sh;
+  };
   # Important requirement: rclone.conf remote [koofrcrypt] must have filename_encoding = base64
   #                        to ensure compatibility with Remotely Save plugin
 in
@@ -90,7 +86,7 @@ in
       Group = "vault";
       # "!": root, but still inside the sandbox below (ProtectSystem, ReadWritePaths, capability set);
       # "-": a failed fix-up must not block the sync
-      ExecStartPre = "-!${fixHermesPerms}";
+      ExecStartPre = "-!${lib.getExe fixHermesPerms} ${lib.escapeShellArg "${vaultPath}/Hermes"} vault";
       ExecStart = pkgs.writeShellScript "vaultsync-bisync" ''
         set -euo pipefail
         # A snapshot can briefly hold the same lock; wait instead of treating that as a sync failure.
@@ -127,8 +123,9 @@ in
       RestrictSUIDSGID = true;
       LockPersonality = true;
       MemoryDenyWriteExecute = true;
-      # Only for the "!" fix-up (read Hermes' dirs, chgrp, setfacl); the non-root rclone keeps none
-      CapabilityBoundingSet = [ "CAP_DAC_READ_SEARCH" "CAP_CHOWN" "CAP_FOWNER" ];
+      # Only for the "!" fix-up (read Hermes' dirs, chgrp, setfacl); the non-root rclone keeps none.
+      # CAP_FSETID: else setfacl clears setgid on dirs (caller not in vault group)
+      CapabilityBoundingSet = [ "CAP_DAC_READ_SEARCH" "CAP_CHOWN" "CAP_FOWNER" "CAP_FSETID" ];
       RestrictAddressFamilies = [ "AF_UNIX" "AF_INET" "AF_INET6" ];
 
       ReadWritePaths = [
