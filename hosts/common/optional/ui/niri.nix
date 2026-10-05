@@ -41,5 +41,7 @@
     wl-clipboard
     grim
     slurp
+    # X11 apps: niri spawns it on demand when it is on PATH and exports DISPLAY to its children.
+    xwayland-satellite
   ];
 }
