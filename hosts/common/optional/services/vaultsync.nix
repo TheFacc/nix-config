@@ -90,11 +90,21 @@ in
       ExecStart = pkgs.writeShellScript "vaultsync-bisync" ''
         set -euo pipefail
         # A snapshot can briefly hold the same lock; wait instead of treating that as a sync failure.
+        # Use Koofr's native API under crypt, not plain WebDAV: timestamps let
+        # bisync detect same-size edits without downloading the vault for hashes.
+        # Refuse unsupported timestamp precision rather than silently skip edits.
+        if ! ${pkgs.rclone}/bin/rclone backend features "koofrcrypt:" \
+          --config "${rcloneConf}" \
+          | ${pkgs.jq}/bin/jq -e '.Precision >= 0 and .Precision <= 2000000000' > /dev/null; then
+          echo 'vaultsync requires timestamp support: migrate koofrcrypt to the native Koofr backend.' >&2
+          exit 1
+        fi
         exec ${pkgs.util-linux}/bin/flock -w 600 ${configPath}/bisync.lock \
           ${pkgs.rclone}/bin/rclone bisync \
             "${vaultPath}" "koofrcrypt:" \
             --config "${rcloneConf}" \
             --cache-dir ${configPath}/cache \
+            --workdir ${configPath}/.cache/rclone/bisync \
             --transfers 4 \
             --checkers 8 \
             --modify-window 2s \
