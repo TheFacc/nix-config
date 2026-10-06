@@ -28,6 +28,22 @@ let
 
     ${pkgs.grim}/bin/grim - | ${pkgs.swappy}/bin/swappy -f -
   '';
+  # Select a region, then crop/annotate it in Satty (floating, see the
+  # window-rule below): Enter copies + saves, Esc discards. Raw ppm skips
+  # grim's PNG encoding, which made Satty take ~3x longer to open.
+  screenshotEdit = pkgs.writeShellScript "niri-screenshot-satty" ''
+    set -euo pipefail
+
+    geometry="$(${pkgs.slurp}/bin/slurp)" || exit 0
+    [ -n "$geometry" ] || exit 0
+
+    ${pkgs.grim}/bin/grim -t ppm -g "$geometry" - | ${pkgs.satty}/bin/satty \
+      --filename - \
+      --copy-command ${pkgs.wl-clipboard}/bin/wl-copy \
+      --output-filename "~/Pictures/Screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png" \
+      --actions-on-enter save-to-clipboard,save-to-file,exit \
+      --actions-on-escape exit
+  '';
 in
 {
   # Optional declarative Niri shortcuts for the DMS desktop.
@@ -164,6 +180,9 @@ in
               spawn "${screenshotScreen}";
           }
           Alt+Print { screenshot-window; }
+          Mod+Shift+S hotkey-overlay-title="Screenshot + Crop/Annotate" {
+              spawn "${screenshotEdit}";
+          }
           XF86Launch1 hotkey-overlay-title="Screenshot Region" {
               spawn "${screenshotRegion}";
           }
@@ -344,6 +363,13 @@ in
           // === System controls ===
           Mod+Escape allow-inhibiting=false { toggle-keyboard-shortcuts-inhibit; }
           Mod+Shift+P { power-off-monitors; }
+      }
+
+      // Satty (Mod+Shift+S) as a tiled window scrolls the whole column strip
+      // sideways; keep it floating over the screen instead.
+      window-rule {
+          match app-id="^com\\.gabm\\.satty$"
+          open-floating true
       }
     '';
   };
