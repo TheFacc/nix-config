@@ -42,6 +42,7 @@
     ../common/optional/services/vaultsync.nix # obsidian vault headless sync
     ../common/optional/services/vault-snapshot.nix # hourly vault history; Hermes can add named commits
     ../common/optional/services/hermes.nix # Hermes agent: vault assistant, Telegram + dashboard
+    ../common/optional/services/telegram-bot-api.nix # local Bot API for Hermes (2 GB files)
     ../common/optional/notesmd.nix            # obsidian notes CLI editor
     ../common/optional/serverr/mediastorage.nix # mergerfs
     ../common/optional/serverr/tinymediamanager.nix # uses podman, waits for mergerfs

@@ -97,6 +97,13 @@ in
     '';
   };
 
+  # Hermes manages a unit named hermes-gateway. Without one, a dashboard restart (button, or the
+  # auto-restart after a settings edit) while the gateway is down runs its own gateway inside
+  # hermes-backend's cgroup: it holds the lock and hermes-agent loops on exit 75.
+  # With the alias Hermes sees a system unit and refuses ("requires root") instead.
+  # Restart the gateway with: sudo systemctl restart hermes-agent.service
+  systemd.services.hermes-agent.aliases = [ "hermes-gateway.service" ];
+
   # Extra hardening on top of upstream (NoNewPrivileges, ProtectSystem=strict, PrivateTmp)
   systemd.services.hermes-agent.serviceConfig = hardening;
   systemd.services.hermes-backend.serviceConfig = hardening;
