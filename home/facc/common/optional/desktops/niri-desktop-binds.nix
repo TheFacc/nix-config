@@ -137,6 +137,11 @@ in
           //     spawn "${dms}" "ipc" "call" "spotlight" "toggleQuery" "emoji";
           // }
 
+          // === Dictation (Handy, see handy.nix) ===
+          Mod+S repeat=false hotkey-overlay-title="Toggle Dictation" {
+              spawn "handy" "--toggle-transcription";
+          }
+
           // === Overview & help ===
           Mod+D repeat=false { toggle-overview; }
           Mod+Tab repeat=false { toggle-overview; }

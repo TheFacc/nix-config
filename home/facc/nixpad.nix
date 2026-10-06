@@ -22,6 +22,9 @@
     # Services
     # common/optional/services/onedrive.nix
 
+    # Productivity
+    common/optional/handy.nix
+
     # Entertainment
     ../common/optional/mpv.nix
 
