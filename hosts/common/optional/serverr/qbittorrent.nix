@@ -8,4 +8,7 @@
         group = "media";
         dataDir = "/home/facc"; #TODO get user?
     };
+
+    # group-writable downloads, so the *arrs (group media) can delete sources when moving season packs out of their folder
+    systemd.services.qBittorrent.serviceConfig.UMask = "0002";
 }
