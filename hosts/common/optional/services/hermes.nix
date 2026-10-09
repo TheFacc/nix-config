@@ -16,7 +16,7 @@
 #
 # One-time, imperative (credentials persist in /var/lib/hermes/.hermes/auth.json):
 #   sudo -u hermes env HERMES_HOME=/var/lib/hermes/.hermes hermes auth add openai-codex
-#   The default model is configured below; /model can switch individual sessions.
+#   Choose the default and auxiliary models in the dashboard; /model switches individual sessions.
 { inputs, config, lib, pkgs, ... }:
 let
   inherit (config.networking) hostName;
@@ -57,8 +57,6 @@ in
     addToSystemPackages = true; # `hermes` CLI + HERMES_HOME system-wide
 
     settings = {
-      model.provider = "openai-codex";
-      model.default = "gpt-6.1-sol";
       terminal.backend = "local"; # runs as the hermes user, inside the sandbox
     };
 
@@ -96,6 +94,15 @@ in
         The viewer is at the dashboard URL under `/diffs/`.
     '';
   };
+
+  # Keep runtime config editable through the dashboard and CLI. Upstream enables
+  # a global config lock even for settings absent from the Nix configuration.
+  # Both service processes and interactive shells must opt out of that lock.
+  systemd.services.hermes-agent.environment.HERMES_MANAGED = lib.mkForce "false";
+  systemd.services.hermes-backend.environment.HERMES_MANAGED = lib.mkForce "false";
+  system.activationScripts.hermes-agent-setup.text = lib.mkAfter ''
+    printf '%s\n' false > ${lib.escapeShellArg "${cfg.stateDir}/.hermes/.managed"}
+  '';
 
   # Hermes manages a unit named hermes-gateway. Without one, a dashboard restart (button, or the
   # auto-restart after a settings edit) while the gateway is down runs its own gateway inside
