@@ -65,6 +65,7 @@
       kdePackages.breeze-icons
 
       swappy
+      meetily
       # TODO drop the override once nixpkgs' hash matches again: upstream
       # re-uploaded the 26.1.052 tarball under the same URL
       (smartgit.overrideAttrs (old: {
