@@ -1,5 +1,9 @@
 { lib, pkgs, ... }:
 {
+  # One agent for shells and desktop apps on every host. Unlock the existing
+  # keys after login with: ssh-add ~/.ssh/id_facc ~/.ssh/id_becq
+  services.ssh-agent.enable = true;
+
   # ~/.ssh/config is a nix-store symlink; in user namespaces (AppImages via
   # bwrap, agent sandboxes) root is unmapped, it looks nobody-owned and ssh
   # rejects it. The owner check only applies to the implicit config, not -F.
@@ -21,7 +25,7 @@
     settings = {
       "*" = {
         ForwardAgent = false;
-        AddKeysToAgent = "no";
+        AddKeysToAgent = "yes";
         Compression = false;
         ServerAliveInterval = 0;
         ServerAliveCountMax = 3;
