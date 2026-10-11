@@ -66,6 +66,7 @@
 
       swappy
       meetily
+      inputs.dankaiusage.packages.${pkgs.stdenv.hostPlatform.system}.default
       # TODO drop the override once nixpkgs' hash matches again: upstream
       # re-uploaded the 26.1.052 tarball under the same URL
       (smartgit.overrideAttrs (old: {
