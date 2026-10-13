@@ -4,4 +4,5 @@
   # List your module files here
   qbittorrent = import ./qbittorrent.nix;
   servermon = import ./servermon; # Telegram server monitor/alert bot
+  cloudflare-archive = import ./cloudflare-archive; # daily copy of Cloudflare request analytics
 }

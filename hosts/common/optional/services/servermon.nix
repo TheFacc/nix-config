@@ -44,7 +44,8 @@ in
     failureAlerts.extraServices = [ "tg-c2c" "flaresolverr" ]
       ++ lib.optional (config.users.users ? vaultsync) "vaultsync" # obsidian vault bisync
       ++ lib.optional config.services.vault-snapshot.enable "vault-snapshot"
-      ++ lib.optional (config.services.vault-snapshot.offsite.enable or false) "vault-snapshot-offsite";
+      ++ lib.optional (config.services.vault-snapshot.offsite.enable or false) "vault-snapshot-offsite"
+      ++ lib.optional config.services.cloudflare-archive.enable "cloudflare-archive";
 
     smartd = {
       enable = true;

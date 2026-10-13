@@ -48,6 +48,7 @@
     ../common/optional/serverr/tinymediamanager.nix # uses podman, waits for mergerfs
     ../common/optional/services/telegram-c2c.nix # Telegram C2C forwarding bot (+python3)
     ../common/optional/services/servermon.nix # Telegram alerts: disks, mounts, services, power, network
+    ../common/optional/services/cloudflare-archive.nix # daily copy of Cloudflare request analytics (tvtime-archive)
     inputs.nur.modules.nixos.default
 #    inputs.nur-xddxdd.nixosModules.flaresolverr#-21hsmw
 #     inputs.nur.hmModules.nur
