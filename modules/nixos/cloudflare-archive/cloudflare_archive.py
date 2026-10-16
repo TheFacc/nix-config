@@ -177,14 +177,18 @@ def read_rows(path):
         return [json.loads(line) for line in f if line.strip()]
 
 
+def read_manifest(root, zone, dataset, hour):
+    try:
+        with open(os.path.join(day_dir(root, zone, dataset, hour), "manifest.json")) as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+
+
 def update_manifest(root, zone, dataset, hour, entry):
     path = os.path.join(day_dir(root, zone, dataset, hour), "manifest.json")
-    try:
-        with open(path) as f:
-            manifest = json.load(f)
-    except FileNotFoundError:
-        manifest = {}
-    manifest.setdefault(hour.strftime("%H"), {}).update(entry)
+    manifest = read_manifest(root, zone, dataset, hour)
+    manifest[hour.strftime("%H")] = entry
     write_atomic(path, (json.dumps(manifest, indent=1, sort_keys=True) + "\n").encode())
 
 
@@ -267,16 +271,24 @@ def run(cfg):
             # oldest first: those are the next ones Cloudflare deletes
             for hour in reversed(hours):
                 raw, anon = hour_files(cfg["dataDir"], zone["name"], dataset, hour)
-                if os.path.exists(raw) or os.path.exists(anon):
+                # a copy flagged incomplete is fetched again while Cloudflare still has the hour:
+                # mismatches are usually transient (heavy hours under load) and gone on a later run
+                flagged = os.path.exists(raw) and "incomplete" in read_manifest(
+                    cfg["dataDir"], zone["name"], dataset, hour).get(hour.strftime("%H"), {})
+                if (os.path.exists(raw) or os.path.exists(anon)) and not flagged:
                     continue
                 label = f'{zone["name"]} {dataset} {iso(hour)}'
                 old = hour < alert_before
                 try:
-                    n = archive_hour(cf, cfg, zone, dataset, hour, keep_incomplete=old)
+                    n = archive_hour(cf, cfg, zone, dataset, hour, keep_incomplete=old and not flagged)
                     fetched += 1
-                    log(f"{label}: {n} rows")
+                    log(f"{label}: {n} rows" + (", replaces the copy flagged incomplete" if flagged else ""))
                 except Incomplete as e:
-                    # recent hours can still be filling in; an old incomplete hour is a real problem
+                    # recent hours can still be filling in; an old incomplete hour is a real problem,
+                    # reported once when first stored
+                    if flagged:
+                        log(f"{label}: still {e}, keeping the flagged copy")
+                        continue
                     log(f"{label}: {e}" + ("" if old else ", will retry next run"))
                     if old:
                         failures.append(f"{label}: {e}")
@@ -329,16 +341,20 @@ def status(cfg):
     for zone in cfg["zones"]:
         for dataset in cfg["datasets"]:
             base = os.path.join(cfg["dataDir"], zone["name"], dataset)
-            files, size, oldest = 0, 0, None
+            files, size, oldest, flagged = 0, 0, None, 0
             for dirpath, _, names in os.walk(base):
                 for name in names:
                     if name.endswith(".ndjson.gz"):
                         files += 1
                         size += os.path.getsize(os.path.join(dirpath, name))
                         oldest = min(oldest or dirpath, dirpath)
+                    elif name == "manifest.json":
+                        with open(os.path.join(dirpath, name)) as f:
+                            flagged += sum("incomplete" in e for e in json.load(f).values())
             missing = [h for h in window if not any(os.path.exists(p) for p in hour_files(cfg["dataDir"], zone["name"], dataset, h))]
             first_day = os.path.relpath(oldest, base) if oldest else "-"
             log(f'{zone["name"]:<22} {dataset:<9} {files:>6} hours since {first_day}  {size / 1e6:8.1f} MB  '
+                f'flagged incomplete: {flagged}  '
                 f'missing in Cloudflare window: {len(missing)}' + (f' (oldest {iso(missing[-1])})' if missing else ""))
     return 0
 
