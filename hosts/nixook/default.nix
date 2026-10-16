@@ -24,7 +24,6 @@
     ../common/optional/plasma.nix # desktop environment
 
     # Services
-    # ../common/optional/services/onedrive.nix # onedrive for linux
     ../common/optional/services/tailscale.nix # tailscale vpn
     ../common/optional/services/syncthing-devices.nix # syncthing devices IDs
     ../common/optional/services/syncthing-folders.nix # syncthing sync folders

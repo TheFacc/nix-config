@@ -39,7 +39,6 @@
     ../common/optional/ui/catppuccin.nix
 
     # Services
-    # ../common/optional/services/onedrive.nix
     ../common/optional/services/tailscale.nix
     # ../common/optional/services/syncthing.nix
     ../common/optional/docker.nix

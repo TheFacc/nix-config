@@ -29,7 +29,6 @@
      ../common/optional/ui/catppuccin.nix # theme
 
     # Services
-    # ../common/optional/services/onedrive.nix # onedrive for linux
     ../common/optional/services/tailscale.nix # tailscale vpn
     ../common/optional/services/syncthing.nix # syncthing devices (JSON) + folders
     ../common/optional/docker.nix # sorry nix
