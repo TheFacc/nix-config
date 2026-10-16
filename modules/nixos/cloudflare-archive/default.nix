@@ -127,7 +127,8 @@ in
         SystemCallArchitectures = "native";
         SystemCallFilter = [ "@system-service" ];
         CapabilityBoundingSet = "";
-        ReadWritePaths = [ cfg.dataDir ];
+        # "-": systemd builds the namespace even for the "+" ExecStartPre, and fails while dataDir doesn't exist yet
+        ReadWritePaths = [ "-${cfg.dataDir}" ];
         UMask = "0027";
       };
     };
