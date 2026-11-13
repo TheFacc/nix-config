@@ -72,6 +72,11 @@
     fprintd.enable = lib.mkDefault true;
   };
 
+  # The Synaptics sensor (06cb:00f9) re-enumerates on every resume and
+  # fprintd keeps the dead device around, so sudo/lock end up on a stale,
+  # already-claimed one. Restart fprintd so it only sees the live sensor.
+  powerManagement.resumeCommands = "${pkgs.systemd}/bin/systemctl try-restart fprintd.service";
+
   # Fingerprint PAM lives in hosts/nixpad/default.nix. Enroll with:
   #   fprintd-enroll
 }
