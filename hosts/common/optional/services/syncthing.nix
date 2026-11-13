@@ -8,25 +8,27 @@ let
     inherit id;
     compression = "never";
   }) stDeviceIds;
+  # devices not in the JSON yet (e.g. a new host before its ID is known) are left out
+  known = lib.filter (d: stDeviceIds ? ${d});
 
   # sync walls
   st_walls = {
     id = "walls-all";
     label = "(sync) walls-all";
     type = "sendreceive";
-    devices = [ "nixex" "nixossone" "nixook" ];
+    devices = known [ "nixex" "nixossone" "nixook" "nixpad" ];
   };
   st_walls_desktop = {
     id = "walls-desktop";
     label = "(sync) walls-desktop";
     type = "sendreceive";
-    devices = [ "nixex" "nixossone" "nixook" ];
+    devices = known [ "nixex" "nixossone" "nixook" "nixpad" ];
   };
   st_walls_cell = {
     id = "walls-cell";
     label = "(sync) walls-cell";
     type = "sendreceive";
-    devices = [ "nixex" "nixossone" "nixook" "Ultracc" ];
+    devices = known [ "nixex" "nixossone" "nixook" "nixpad" "Ultracc" ];
   };
   # sync backups
   st_backuparr = {
@@ -79,6 +81,12 @@ in
           "/home/${user}/Pictures/walls/CellWallCopies" = st_walls_cell;
           "/home/${user}/Documents/_backuparr" = st_backuparr;
           "/home/${user}/Pictures/_toPixel1" = st_toPixel1;
+        })
+        # nixpad: walls only
+        (lib.mkIf (config.networking.hostName == "nixpad") {
+          "/home/${user}/Pictures/walls" = st_walls;
+          "/home/${user}/Pictures/walls/DesktopWallCopies" = st_walls_desktop;
+          "/home/${user}/Pictures/walls/CellWallCopies" = st_walls_cell;
         })
         # nixex:
         (lib.mkIf (config.networking.hostName == "nixex") {

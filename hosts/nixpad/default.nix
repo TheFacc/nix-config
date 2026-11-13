@@ -40,7 +40,7 @@
 
     # Services
     ../common/optional/services/tailscale.nix
-    # ../common/optional/services/syncthing.nix
+    ../common/optional/services/syncthing.nix # syncthing devices (JSON) + walls
     ../common/optional/docker.nix
     # ../common/optional/virtualbox.nix
     # ../common/optional/services/automount.nix
