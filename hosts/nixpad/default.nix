@@ -110,10 +110,9 @@
   boot.loader.efi.canTouchEfiVariables = true;
   boot.loader.efi.efiSysMountPoint = "/efi";
 
-  # systemd in initrd: caches the LUKS passphrase and retries it on every
-  # encrypted device, so growing the btrfs pool later with
-  # `btrfs device add` still means typing the passphrase only once.
-  boot.initrd.systemd.enable = true;
+  # initrd is always systemd-based now (scripted initrd was removed upstream):
+  # it caches the LUKS passphrase and retries it on every encrypted device,
+  # so growing the btrfs pool with `btrfs device add` still asks only once.
 
   # Mount the Windows NTFS partition. Works read-write because C: is decrypted
   # and Fast Startup is disabled on the Windows side — if Windows ever

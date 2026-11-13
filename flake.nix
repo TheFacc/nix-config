@@ -67,12 +67,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # Dank Material Shell (Niri integration via home-manager modules)
-    dms = {
-      url = "github:AvengeMedia/DankMaterialShell/stable";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     dankaiusage = {
       url = "github:alcxyz/DankAIUsage";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -83,15 +77,12 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # Local-first Logitech Options+ alternative (HID++ / uinput)
-    openlogi = {
-      url = "github:AprilNEA/OpenLogi?dir=packaging";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     # Hermes Agent (NousResearch): own nixpkgs on purpose, their uv2nix build is CI-tested against it
     # Tier-2 Nix support, main can break: update deliberately with `nix flake update hermes-agent`
-    hermes-agent.url = "github:NousResearch/hermes-agent";
+    hermes-agent = {
+      url = "github:NousResearch/hermes-agent";
+      inputs.home-manager.follows = "home-manager"; # only its NixOS module uses it
+    };
   };
 
   outputs = { self, nixpkgs, home-manager, nur, ... }@inputs:

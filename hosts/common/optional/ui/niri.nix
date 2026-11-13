@@ -1,4 +1,4 @@
-# Base Niri compositor stack (system-level). Pair with programs.dms-shell.
+# Base Niri compositor stack (system-level). Pair with programs.dux-shell.
 { config, pkgs, lib, ... }:
 {
   programs.niri.enable = true;

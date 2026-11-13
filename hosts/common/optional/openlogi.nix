@@ -6,13 +6,22 @@
 # ~/.config/openlogi/config.toml after first run (keys are hardware-generated).
 # Do not manage that file from Nix until those keys exist, or Home Manager will
 # fight the GUI.
-{ inputs, ... }:
+{ config, lib, ... }:
 {
-  imports = [ inputs.openlogi.nixosModules.default ];
+  # nixpkgs module: package + udev rules
+  programs.openlogi.enable = true;
 
-  programs.openlogi = {
-    enable = true;
-    launchAtLogin = true;
+  # The agent service upstream's own flake module adds; nixpkgs' module lacks it.
+  systemd.user.services.openlogi-agent = {
+    description = "OpenLogi background agent";
+    wantedBy = [ "graphical-session.target" ];
+    after = [ "graphical-session.target" ];
+    partOf = [ "graphical-session.target" ];
+    serviceConfig = {
+      ExecStart = lib.getExe' config.programs.openlogi.package "openlogi-agent";
+      Restart = "on-failure";
+      RestartSec = 5;
+    };
   };
 
   # OpenLogi's packaged rules only TAG+="uaccess". logind applies that ACL when

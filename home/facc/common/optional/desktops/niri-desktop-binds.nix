@@ -1,7 +1,7 @@
 { pkgs, ... }:
 let
-  dms = "${pkgs.dms-shell}/bin/dms";
-  dmsNiriConfig = builtins.readFile "${pkgs.dms-shell.src}/core/internal/config/embedded/niri.kdl";
+  dms = "${pkgs.dux-shell}/bin/dms";
+  dmsNiriConfig = builtins.readFile "${pkgs.dux-shell.src}/core/internal/config/embedded/niri.kdl";
   managedNiriConfig =
     let
       withFocusFollowsMouse = builtins.replaceStrings
