@@ -123,6 +123,13 @@
 
   services.fstrim.enable = true;
 
+  # Docker here is only for temporary test stacks: don't start the daemon
+  # at boot. docker.socket still starts it on the first `docker` command.
+  # Containers with a restart policy (compose `restart: unless-stopped`)
+  # come back as soon as the daemon starts, so keep stacks stopped with
+  # `docker compose down`/`stop` rather than leaving them running.
+  virtualisation.docker.enableOnBoot = false;
+
   # Get battery info (was enabled by Plasma automatically, now we need it explicitly)
   services.upower = {
     enable = true;
