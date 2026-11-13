@@ -3,7 +3,9 @@
 let
   user = "facc"; # TODO inherit user?
 
-  stDeviceIds = builtins.fromJSON (builtins.readFile ./syncthing-devices.json); # map name:id
+  # map name:id; an empty id (host being reinstalled, new id not known yet) counts as absent
+  stDeviceIds = lib.filterAttrs (_name: id: id != "")
+    (builtins.fromJSON (builtins.readFile ./syncthing-devices.json));
   stDevices = lib.mapAttrs (_name: id: {
     inherit id;
     compression = "never";
@@ -35,7 +37,7 @@ let
     id = "backuparr";
     label = "(sync) backuparr";
     type = "sendreceive";
-    devices = [ "nixex" "nixossone" "nixook" ];
+    devices = known [ "nixex" "nixossone" "nixook" ];
   };
 
   # one-way
