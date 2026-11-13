@@ -140,6 +140,14 @@
     allowRiskyCriticalPowerAction = true;
   };
 
+  # Battery charge thresholds, same as Vantage's custom charge setting: stop
+  # at 80%, resume below 75%. thinkpad_acpi stores them in the EC, so Windows
+  # sees them too. No TLP: it conflicts with power-profiles-daemon (dms.nix).
+  # Start is written first so it stays below end while end is still 100.
+  services.udev.extraRules = ''
+    SUBSYSTEM=="power_supply", KERNEL=="BAT0", ATTR{charge_control_start_threshold}="75", ATTR{charge_control_end_threshold}="80"
+  '';
+
   # Keep the session running when the lid closes, on battery or AC.
   services.logind.settings.Login = {
     HandleLidSwitch = "ignore";
