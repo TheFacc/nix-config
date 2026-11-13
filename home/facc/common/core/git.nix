@@ -11,7 +11,7 @@ in
       core.sshCommand = "ssh -F ~/.ssh/config -i ~/.ssh/id_facc -o IdentitiesOnly=yes";  # -F: explicit config skips the owner check that fails in user namespaces
       url."git@github.com:".insteadOf = "https://github.com/";  # HTTPS remotes use your key too
     };
-    ignores = [ ".direnv" "result" ];
+    ignores = [ ".direnv" "result" ".worktrees" ];   # .worktrees: in-repo worktree home (see AGENTS.md)
     signing.format = "openpgp";
     # Emails are rendered by NixOS sops (runtime paths, not the nix store). Later includes win.
     includes =
