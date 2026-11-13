@@ -64,6 +64,7 @@ in
     dataDir = "/home/${user}";
     guiPasswordFile = lib.mkIf config.local.hasSopsSecrets config.sops.secrets."services/syncthing/gui_password".path;
     settings = {
+      gui.user = user;
       devices = stDevices;
       folders = lib.mkMerge [
         # nixossone:
