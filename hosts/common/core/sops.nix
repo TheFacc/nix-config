@@ -30,6 +30,17 @@
           owner = config.users.users.facc.name;
           mode = "0400";
         };
+        # GitHub token for flake fetches: lifts the anonymous 60 req/h limit.
+        "users/facc/github/nix_token" = { };
+      };
+
+      # facc-owned: `nix flake update` fetches in the client, not the daemon.
+      templates."nix-access-tokens" = {
+        owner = config.users.users.facc.name;
+        mode = "0400";
+        content = ''
+          access-tokens = github.com=${config.sops.placeholder."users/facc/github/nix_token"}
+        '';
       };
 
       templates."git-user-thefacc-email" = {
@@ -51,6 +62,11 @@
       };
     })
   ];
+
+  # `!include` skips the file silently when missing or unreadable (other users).
+  nix.extraOptions = lib.mkIf config.local.hasSopsSecrets ''
+    !include ${config.sops.templates."nix-access-tokens".path}
+  '';
 
   warnings = lib.mkIf (!config.local.hasSopsSecrets) [
     "hosts/common/core/secrets/secrets.yaml is missing: create it from secrets.yaml.example, encrypt with sops, and add it to git (ciphertext only). See hosts/common/core/secrets/README.md."
