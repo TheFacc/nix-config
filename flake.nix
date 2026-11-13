@@ -149,6 +149,9 @@
     # Custom modifications/overrides to upstream packages.
     overlays = import ./overlays { inherit inputs outputs; };
 
+    # Build or run custom packages independently: nix run .#meetily
+    packages = forEachSystem (pkgs: import ./pkgs { inherit pkgs; });
+
     #################### NixOS Configurations ####################
     #
     # Available through 'nixos-rebuild --flake .#hostname'

@@ -26,6 +26,7 @@
   libsoup_3,
   openssl,
   alsa-lib,
+  libpulseaudio,
   libayatana-appindicator,
   vulkan-loader,
   vulkan-headers,
@@ -46,13 +47,18 @@ rustPlatform.buildRustPackage (finalAttrs: {
   __structuredAttrs = true;
 
   src = fetchFromGitHub {
-    owner = "Zackriya-Solutions";
+    # PR #822: native PulseAudio/PipeWire system-audio capture.
+    # https://github.com/Zackriya-Solutions/meetily/pull/822
+    owner = "loicfavory";
     repo = "meetily";
-    tag = "v${finalAttrs.version}";
-    hash = "sha256-rnrByZHPNCErCPA6WfJFeEGQxQAF4KyCXzOuXtKjHr4=";
+    rev = "7a809bdb58272d3c881ce7042cd516fadfaf8889";
+    hash = "sha256-xU4u63A69GDIlFDP/Pvb2BoK5QnuyNmZTNK9skmtX+Q=";
   };
 
-  cargoHash = "sha256-TlmLc+3uUxvTlMn+8/Q6WOBk0eS/8PInPd+TQeaWj1c=";
+  cargoHash = "sha256-DKIeFrtiqsc4LHoMONXeWkKnCtI5OU84ZwF3XITeo5s=";
+
+  # PR #823, backported onto #822: optional mic/system stereo channels.
+  patches = [ ./separate-audio-channels.patch ];
 
   pnpmRoot = "frontend";
   pnpmDeps = fetchPnpmDeps {
@@ -76,6 +82,12 @@ rustPlatform.buildRustPackage (finalAttrs: {
       .bundle.createUpdaterArtifacts = false |
       .plugins.updater.endpoints = []
     '
+
+    # Next's worker pool does not otherwise follow Nix's per-build core limit.
+    substituteInPlace frontend/next.config.js \
+      --replace-fail "  reactStrictMode: false," \
+        "  experimental: { cpus: Number(process.env.NIX_BUILD_CORES) || 1 },
+  reactStrictMode: false,"
 
     # next/font/google downloads the font at build time
     cp ${source-sans}/share/fonts/truetype/SourceSans3-{Regular,Medium,Semibold,Bold}.ttf frontend/src/app/
@@ -122,6 +134,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     libsoup_3
     openssl
     alsa-lib
+    libpulseaudio
     libayatana-appindicator
     vulkan-loader
     vulkan-headers
@@ -141,6 +154,13 @@ rustPlatform.buildRustPackage (finalAttrs: {
   # Tauri bundles these two sidecars from binaries/<name>-<target>; build.rs
   # would otherwise download a static ffmpeg.
   preBuild = ''
+    # Rust and native model builds can exhaust laptop RAM with all cores active.
+    # Preserve --cores 1 when requested, and cap both Cargo builds at two jobs.
+    if (( NIX_BUILD_CORES == 0 || NIX_BUILD_CORES > 2 )); then
+      export NIX_BUILD_CORES=2
+    fi
+    export CMAKE_BUILD_PARALLEL_LEVEL="$NIX_BUILD_CORES"
+
     export CMAKE_PREFIX_PATH="${spirv-headers}''${CMAKE_PREFIX_PATH:+:$CMAKE_PREFIX_PATH}"
     export NIX_CFLAGS_COMPILE="-isystem ${spirv-headers}/include ''${NIX_CFLAGS_COMPILE:-}"
 

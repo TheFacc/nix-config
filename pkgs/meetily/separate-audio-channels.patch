@@ -1,0 +1,739 @@
+Backport of PR #823 onto the pinned PR #822 source.
+Origin: https://github.com/Zackriya-Solutions/meetily/pull/823
+Commit: 616128f1f6788e9453127714ecbf3a9add5706b0
+Only hunk context is adjusted for the older ring buffer, logging, and saver.
+
+From 616128f1f6788e9453127714ecbf3a9add5706b0 Mon Sep 17 00:00:00 2001
+From: Dreamkeeper <dkvasnikov@gmail.com>
+Date: Wed, 30 Sep 2026 17:21:19 +0300
+Subject: [PATCH] feat(recording): optionally save mic and system audio as
+ separate channels
+
+Adds an opt-in "Save Separate Channels" recording setting (off by default).
+When enabled, the pipeline also writes audio_stereo.mp4 next to audio.mp4:
+left channel = microphone, right channel = system audio, built from the same
+aligned mixer windows as the mixed file. metadata.json records the file as
+audio_file_stereo with audio_file_stereo_channels ["microphone", "system"].
+The mixed audio.mp4, live transcription and retranscription are unchanged.
+
+Also fixes mixer alignment: a window was extracted as soon as either stream
+had enough samples, so a stream whose packet was still in flight got
+zero-padded mid-signal and its samples slid into the next window (short
+dropouts in the mix, drifting mic/system offset). Windows are now taken when
+both streams can fill them, or when one stream is 300 ms ahead (the other has
+stalled, e.g. WASAPI loopback with nothing playing). Samples left in the ring
+buffer at stop are now written instead of dropped.
+
+Refs #241
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../src-tauri/src/audio/incremental_saver.rs  |  69 +++++++++-
+ frontend/src-tauri/src/audio/pipeline.rs      | 124 +++++++++++++++++-
+ .../src-tauri/src/audio/recording_commands.rs |  23 ++--
+ .../src-tauri/src/audio/recording_manager.rs  |  16 ++-
+ .../src/audio/recording_preferences.rs        |   6 +
+ .../src-tauri/src/audio/recording_saver.rs    |  74 +++++++++++
+ frontend/src/components/RecordingSettings.tsx |  29 +++-
+ 7 files changed, 320 insertions(+), 21 deletions(-)
+
+diff --git a/frontend/src-tauri/src/audio/incremental_saver.rs b/frontend/src-tauri/src/audio/incremental_saver.rs
+index 9074ec957d..f31bd6313e 100644
+--- a/frontend/src-tauri/src/audio/incremental_saver.rs
++++ b/frontend/src-tauri/src/audio/incremental_saver.rs
+@@ -7,7 +7,7 @@ use serde::{Serialize, Deserialize};
+
+ use super::ffmpeg::find_ffmpeg_path;
+
+-/// Audio data without device type (we only store mixed audio)
++/// Audio data without device type (mixed mono, or interleaved stereo for the separate-channels file)
+ #[derive(Clone)]
+ struct AudioData {
+     data: Vec<f32>,
+@@ -23,6 +23,8 @@ pub struct IncrementalAudioSaver {
+     checkpoints_dir: PathBuf,
+     meeting_folder: PathBuf,
+     sample_rate: u32,
++    channels: u16,
++    output_file_name: String,
+ }
+
+ impl IncrementalAudioSaver {
+@@ -32,7 +34,22 @@ impl IncrementalAudioSaver {
+     /// * `meeting_folder` - Path to the meeting folder (contains .checkpoints/)
+     /// * `sample_rate` - Sample rate of audio (typically 48000)
+     pub fn new(meeting_folder: PathBuf, sample_rate: u32) -> Result<Self> {
+-        let checkpoints_dir = meeting_folder.join(".checkpoints");
++        Self::with_layout(meeting_folder, sample_rate, 1, ".checkpoints", "audio.mp4")
++    }
++
++    /// Create a saver with an explicit channel count and file layout.
++    ///
++    /// Used for the optional separate-channels recording: interleaved stereo
++    /// (L = microphone, R = system) written to its own checkpoints directory so
++    /// crash recovery of the mixed `audio.mp4` never picks up stereo chunks.
++    pub fn with_layout(
++        meeting_folder: PathBuf,
++        sample_rate: u32,
++        channels: u16,
++        checkpoints_dir_name: &str,
++        output_file_name: &str,
++    ) -> Result<Self> {
++        let checkpoints_dir = meeting_folder.join(checkpoints_dir_name);
+
+         // Verify checkpoints directory exists
+         if !checkpoints_dir.exists() {
+@@ -41,11 +58,14 @@ impl IncrementalAudioSaver {
+
+         Ok(Self {
+             checkpoint_buffer: Vec::new(),
+-            checkpoint_interval_samples: sample_rate as usize * 30, // 30 seconds
++            // 30 seconds of frames; interleaved buffers hold `channels` samples per frame
++            checkpoint_interval_samples: sample_rate as usize * 30 * channels as usize,
+             checkpoint_count: 0,
+             checkpoints_dir,
+             meeting_folder,
+             sample_rate,
++            channels,
++            output_file_name: output_file_name.to_string(),
+         })
+     }
+
+@@ -96,11 +116,11 @@ impl IncrementalAudioSaver {
+         encode_single_audio(
+             bytemuck::cast_slice(&audio_data),
+             self.sample_rate,
+-            1,  // mono
++            self.channels,
+             &checkpoint_path
+         )?;
+
+-        let duration_seconds = audio_data.len() as f32 / self.sample_rate as f32;
++        let duration_seconds = audio_data.len() as f32 / (self.sample_rate as f32 * self.channels as f32);
+         self.checkpoint_count += 1;
+
+         info!("Saved checkpoint {}: {:.2}s of audio ({} samples)",
+@@ -113,7 +133,7 @@ impl IncrementalAudioSaver {
+
+     /// Finalize the recording: save final checkpoint, merge all checkpoints, cleanup
+     ///
+-    /// Returns the path to the final merged audio.mp4 file
++    /// Returns the path to the final merged audio file (`audio.mp4` by default)
+     pub async fn finalize(&mut self) -> Result<PathBuf> {
+         info!("Finalizing incremental recording...");
+
+@@ -129,7 +149,7 @@ impl IncrementalAudioSaver {
+         }
+
+         // Merge all checkpoints using FFmpeg concat
+-        let final_audio_path = self.meeting_folder.join("audio.mp4");
++        let final_audio_path = self.meeting_folder.join(&self.output_file_name);
+         self.merge_checkpoints(&final_audio_path).await?;
+
+         // Clean up checkpoints directory
+@@ -454,6 +474,41 @@ mod tests {
+         assert!(!meeting_folder.join(".checkpoints").exists());
+     }
+
++    #[tokio::test]
++    async fn test_stereo_checkpoints_use_separate_layout() {
++        let temp_dir = tempdir().unwrap();
++        let meeting_folder = temp_dir.path().join("Stereo_Test");
++        std::fs::create_dir_all(meeting_folder.join(".checkpoints_stereo")).unwrap();
++
++        let mut saver = IncrementalAudioSaver::with_layout(
++            meeting_folder.clone(),
++            48000,
++            2,
++            ".checkpoints_stereo",
++            "audio_stereo.mp4",
++        ).unwrap();
++
++        // 60 seconds of interleaved stereo in 0.5s chunks (2 samples per frame)
++        for i in 0..120 {
++            let chunk = AudioChunk {
++                data: vec![0.25f32; 24000 * 2],
++                sample_rate: 48000,
++                timestamp: i as f64 * 0.5,
++                chunk_id: i as u64,
++                device_type: DeviceType::Microphone,
++            };
++            saver.add_chunk(chunk).unwrap();
++        }
++
++        // Checkpoint interval counts frames, not samples: still one per 30s
++        assert_eq!(saver.checkpoint_count, 2);
++
++        let final_path = saver.finalize().await.unwrap();
++        assert_eq!(final_path, meeting_folder.join("audio_stereo.mp4"));
++        assert!(final_path.exists());
++        assert!(!meeting_folder.join(".checkpoints_stereo").exists());
++    }
++
+     #[tokio::test]
+     async fn test_empty_recording() {
+         let temp_dir = tempdir().unwrap();
+diff --git a/frontend/src-tauri/src/audio/pipeline.rs b/frontend/src-tauri/src/audio/pipeline.rs
+index 41ab686c6d..43179c81b5 100644
+--- a/frontend/src-tauri/src/audio/pipeline.rs
++++ b/frontend/src-tauri/src/audio/pipeline.rs
+@@ -30,4 +30,8 @@ struct AudioMixerRingBuffer {
+     mic_buffer: VecDeque<f32>,
+     system_buffer: VecDeque<f32>,
+     window_size_samples: usize,  // Fixed mixing window (e.g., 50ms)
++    /// Extra samples the leading stream may accumulate while waiting for the
++    /// other one before the other is treated as stalled (e.g. WASAPI loopback
++    /// delivers no packets while nothing is playing) and zero-padded.
++    stall_margin_samples: usize,
+     max_buffer_size: usize,  // Safety limit (e.g., 100ms)
+@@ -46,6 +50,7 @@ impl AudioMixerRingBuffer {
+         // due to sample-by-sample streaming → batching → channel transmission
+         // Accounts for: RNNoise buffering + Core Audio jitter + processing delays
+         let max_buffer_size = window_size_samples * 8;  // 400ms (was 200ms)
++        let stall_margin_samples = (sample_rate as f32 * 0.3) as usize;  // 300ms
+
+         info!("🔊 Ring buffer initialized: window={}ms ({} samples), max={}ms ({} samples)",
+               window_ms, window_size_samples,
+@@ -55,4 +60,5 @@ impl AudioMixerRingBuffer {
+             mic_buffer: VecDeque::with_capacity(max_buffer_size),
+             system_buffer: VecDeque::with_capacity(max_buffer_size),
+             window_size_samples,
++            stall_margin_samples,
+             max_buffer_size,
+@@ -89,8 +95,33 @@ impl AudioMixerRingBuffer {
+     }
+
++    /// A window is ready when both streams can fill it, or when one stream is a
++    /// full stall margin ahead (the other has stopped delivering samples).
++    ///
++    /// Extracting as soon as *either* stream had a window meant that whenever one
++    /// stream's latest packet was still in flight, the other one triggered the
++    /// extraction and the late stream was zero-padded mid-signal. Its samples then
++    /// slid into the next window, producing short dropouts in the mix and a
++    /// drifting offset between microphone and system audio.
+     fn can_mix(&self) -> bool {
+-        self.mic_buffer.len() >= self.window_size_samples ||
+-        self.system_buffer.len() >= self.window_size_samples
++        let mic = self.mic_buffer.len();
++        let sys = self.system_buffer.len();
++        let window = self.window_size_samples;
++        let stalled = window + self.stall_margin_samples;
++        (mic >= window && sys >= window) || mic >= stalled || sys >= stalled
++    }
++
++    /// Drain whatever is left at the end of a recording as one final aligned
++    /// window (the shorter stream is zero-padded to the longer one).
++    fn extract_final_window(&mut self) -> Option<(Vec<f32>, Vec<f32>)> {
++        let len = self.mic_buffer.len().max(self.system_buffer.len());
++        if len == 0 {
++            return None;
++        }
++        let mut mic: Vec<f32> = self.mic_buffer.drain(..).collect();
++        let mut sys: Vec<f32> = self.system_buffer.drain(..).collect();
++        mic.resize(len, 0.0);
++        sys.resize(len, 0.0);
++        Some((mic, sys))
+     }
+
+     fn extract_window(&mut self) -> Option<(Vec<f32>, Vec<f32>)> {
+@@ -743,6 +774,8 @@ pub struct AudioPipeline {
+     mixer: ProfessionalAudioMixer,
+     // Recording sender for pre-mixed audio
+     recording_sender_for_mixed: Option<mpsc::UnboundedSender<AudioChunk>>,
++    // Optional recording sender for unmixed interleaved stereo (L = mic, R = system)
++    recording_sender_for_stereo: Option<mpsc::UnboundedSender<AudioChunk>>,
+ }
+
+ impl AudioPipeline {
+@@ -818,6 +851,7 @@ impl AudioPipeline {
+             ring_buffer,
+             mixer,
+             recording_sender_for_mixed: None,  // Will be set by manager
++            recording_sender_for_stereo: None, // Set by manager when separate channels are enabled
+         })
+     }
+
+@@ -904,6 +938,9 @@ impl AudioPipeline {
+                                 };
+                                 let _ = sender.send(recording_chunk);
+                             }
++
++                            // STEP 5: Send the same aligned window unmixed as interleaved stereo
++                            self.send_stereo_window(&mic_window, &sys_window, chunk.timestamp);
+                         }
+                     }
+                 }
+@@ -915,16 +952,50 @@ impl AudioPipeline {
+             }
+         }
+
++        // Samples left in the ring buffer (< one window) would otherwise never reach the
++        // recording files; transcription already flushed its own buffered speech above.
++        if let Some((mic_window, sys_window)) = self.ring_buffer.extract_final_window() {
++            if let Some(ref sender) = self.recording_sender_for_mixed {
++                let _ = sender.send(AudioChunk {
++                    data: self.mixer.mix_window(&mic_window, &sys_window),
++                    sample_rate: self.sample_rate,
++                    timestamp: 0.0,
++                    chunk_id: self.chunk_id_counter,
++                    device_type: DeviceType::Microphone,
++                });
++            }
++            self.send_stereo_window(&mic_window, &sys_window, 0.0);
++        }
++
+         // Flush any remaining VAD segments
+         self.flush_remaining_audio()?;
+
+         info!("VAD-driven audio pipeline ended");
+         Ok(())
+     }
+
++    /// Interleave an aligned mic/system window pair (L = mic, R = system) and send
++    /// it to the separate-channels recording, if enabled.
++    fn send_stereo_window(&self, mic_window: &[f32], sys_window: &[f32], timestamp: f64) {
++        if let Some(ref sender) = self.recording_sender_for_stereo {
++            let mut interleaved = Vec::with_capacity(mic_window.len() * 2);
++            for (mic, sys) in mic_window.iter().zip(sys_window.iter()) {
++                interleaved.push(*mic);
++                interleaved.push(*sys);
++            }
++            let _ = sender.send(AudioChunk {
++                data: interleaved,
++                sample_rate: self.sample_rate,
++                timestamp,
++                chunk_id: self.chunk_id_counter,
++                device_type: DeviceType::Microphone,
++            });
++        }
++    }
++
+     fn flush_remaining_audio(&mut self) -> Result<()> {
+         info!("Flushing remaining audio from pipeline (processed {} chunks)", self.processed_chunks);
+
+         // Flush any remaining audio from VAD processor and send segments to transcription
+         match self.vad_processor.flush() {
+             Ok(final_segments) => {
+@@ -992,6 +1063,7 @@ impl AudioPipelineManager {
+         target_chunk_duration_ms: u32,
+         sample_rate: u32,
+         recording_sender: Option<mpsc::UnboundedSender<AudioChunk>>,
++        stereo_recording_sender: Option<mpsc::UnboundedSender<AudioChunk>>,
+         mic_device_name: String,
+         mic_device_kind: super::device_detection::InputDeviceKind,
+         system_device_name: String,
+@@ -1023,6 +1095,7 @@ impl AudioPipelineManager {
+         // CRITICAL FIX: Connect recording sender to receive pre-mixed audio
+         // This ensures both mic AND system audio are captured in recordings
+         pipeline.recording_sender_for_mixed = recording_sender;
++        pipeline.recording_sender_for_stereo = stereo_recording_sender;
+
+         let handle = tokio::spawn(async move {
+             pipeline.run().await
+@@ -1154,3 +1227,50 @@ mod policy_tests {
+         assert_eq!(VAD_REDEMPTION_TIME_MS, 500);
+     }
+ }
++
++#[cfg(test)]
++mod ring_buffer_tests {
++    use super::*;
++
++    const SR: u32 = 48000;
++
++    fn window(buf: &AudioMixerRingBuffer) -> usize {
++        buf.window_size_samples
++    }
++
++    #[test]
++    fn waits_for_both_streams_before_mixing() {
++        let mut buf = AudioMixerRingBuffer::new(SR);
++        let w = window(&buf);
++        buf.add_samples(DeviceType::Microphone, vec![0.1; w]);
++        // System packet still in flight: must not extract (and zero-pad) yet
++        assert!(!buf.can_mix());
++        buf.add_samples(DeviceType::System, vec![0.2; w]);
++        let (mic, sys) = buf.extract_window().unwrap();
++        assert!(mic.iter().all(|&s| s == 0.1));
++        assert!(sys.iter().all(|&s| s == 0.2));
++    }
++
++    #[test]
++    fn stalled_stream_is_padded_after_margin() {
++        let mut buf = AudioMixerRingBuffer::new(SR);
++        let w = window(&buf);
++        // Loopback delivers nothing while no audio plays: mic alone proceeds after the margin
++        buf.add_samples(DeviceType::Microphone, vec![0.1; w + buf.stall_margin_samples]);
++        assert!(buf.can_mix());
++        let (mic, sys) = buf.extract_window().unwrap();
++        assert_eq!(mic.len(), w);
++        assert!(sys.iter().all(|&s| s == 0.0));
++    }
++
++    #[test]
++    fn final_window_drains_partial_samples_aligned() {
++        let mut buf = AudioMixerRingBuffer::new(SR);
++        buf.add_samples(DeviceType::Microphone, vec![0.1; 100]);
++        buf.add_samples(DeviceType::System, vec![0.2; 40]);
++        let (mic, sys) = buf.extract_final_window().unwrap();
++        assert_eq!((mic.len(), sys.len()), (100, 100));
++        assert!(sys[40..].iter().all(|&s| s == 0.0));
++        assert!(buf.extract_final_window().is_none());
++    }
++}
+diff --git a/frontend/src-tauri/src/audio/recording_commands.rs b/frontend/src-tauri/src/audio/recording_commands.rs
+index 80ad3387fd..04afe66d08 100644
+--- a/frontend/src-tauri/src/audio/recording_commands.rs
++++ b/frontend/src-tauri/src/audio/recording_commands.rs
+@@ -353,16 +353,16 @@ pub async fn start_recording_with_meeting_name<R: Runtime>(
+     })).map_err(|e| e.to_string())?;
+
+     // Load recording preferences to get auto_save AND device preferences
+-    let (auto_save, preferred_mic_name, preferred_system_name) =
++    let (auto_save, save_separate_channels, preferred_mic_name, preferred_system_name) =
+         match super::recording_preferences::load_recording_preferences(&app).await {
+             Ok(prefs) => {
+-                info!("📋 Loaded recording preferences: auto_save={}, preferred_mic={:?}, preferred_system={:?}",
+-                      prefs.auto_save, prefs.preferred_mic_device, prefs.preferred_system_device);
+-                (prefs.auto_save, prefs.preferred_mic_device, prefs.preferred_system_device)
++                info!("📋 Loaded recording preferences: auto_save={}, separate_channels={}, preferred_mic={:?}, preferred_system={:?}",
++                      prefs.auto_save, prefs.save_separate_channels, prefs.preferred_mic_device, prefs.preferred_system_device);
++                (prefs.auto_save, prefs.save_separate_channels, prefs.preferred_mic_device, prefs.preferred_system_device)
+             }
+             Err(e) => {
+                 warn!("Failed to load recording preferences, using defaults: {}", e);
+-                (true, None, None)
++                (true, false, None, None)
+             }
+         };
+
+@@ -393,6 +393,7 @@ pub async fn start_recording_with_meeting_name<R: Runtime>(
+         )
+     });
+     manager.set_meeting_name(Some(effective_meeting_name));
++    manager.set_save_separate_channels(save_separate_channels);
+
+     // Set up error callback
+     let app_for_error = app.clone();
+@@ -561,15 +562,16 @@ pub async fn start_recording_with_devices_and_meeting<R: Runtime>(
+     // Create new recording manager
+     let mut manager = RecordingManager::new();
+
+-    // Load recording preferences to check auto_save setting
+-    let auto_save = match super::recording_preferences::load_recording_preferences(&app).await {
++    // Load recording preferences to check auto_save and separate-channels settings
++    let (auto_save, save_separate_channels) = match super::recording_preferences::load_recording_preferences(&app).await {
+         Ok(prefs) => {
+-            info!("📋 Loaded recording preferences: auto_save={}", prefs.auto_save);
+-            prefs.auto_save
++            info!("📋 Loaded recording preferences: auto_save={}, separate_channels={}",
++                  prefs.auto_save, prefs.save_separate_channels);
++            (prefs.auto_save, prefs.save_separate_channels)
+         }
+         Err(e) => {
+             warn!("Failed to load recording preferences, defaulting to auto_save=true: {}", e);
+-            true // Default to saving if preferences can't be loaded
++            (true, false) // Default to saving if preferences can't be loaded
+         }
+     };
+
+@@ -582,6 +584,7 @@ pub async fn start_recording_with_devices_and_meeting<R: Runtime>(
+         )
+     });
+     manager.set_meeting_name(Some(effective_meeting_name));
++    manager.set_save_separate_channels(save_separate_channels);
+
+     // Set up error callback
+     let app_for_error = app.clone();
+diff --git a/frontend/src-tauri/src/audio/recording_manager.rs b/frontend/src-tauri/src/audio/recording_manager.rs
+index 7bb2967095..2af356e55e 100644
+--- a/frontend/src-tauri/src/audio/recording_manager.rs
++++ b/frontend/src-tauri/src/audio/recording_manager.rs
+@@ -236,6 +236,13 @@ impl RecordingManager {
+         // Set up transcription channel
+         let (transcription_sender, transcription_receiver) = mpsc::unbounded_channel::<AudioChunk>();
+         let (recording_sender, recording_receiver) = mpsc::unbounded_channel::<AudioChunk>();
++        // Optional unmixed stereo recording (L = mic, R = system); needs audio saving enabled
++        let (stereo_sender, stereo_receiver) = if auto_save && self.recording_saver.save_separate_channels() {
++            let (tx, rx) = mpsc::unbounded_channel::<AudioChunk>();
++            (Some(tx), Some(rx))
++        } else {
++            (None, None)
++        };
+
+         // Start recording state first
+         self.state.start_recording()?;
+@@ -267,6 +274,7 @@ impl RecordingManager {
+             0, // Ignored - using dynamic sizing internally
+             48000, // 48kHz sample rate
+             Some(recording_sender), // CRITICAL: Pass recording sender to receive pre-mixed audio
++            stereo_sender,
+             mic_name,
+             mic_kind,
+             sys_name,
+@@ -276,7 +284,7 @@ impl RecordingManager {
+             return Err(RecordingStartError::TranscriptionRuntime(error));
+         }
+
+-        self.recording_saver.start_accumulation(auto_save, recording_receiver);
++        self.recording_saver.start_accumulation(auto_save, recording_receiver, stereo_receiver);
+         self.recording_saver.set_device_info(
+             microphone_device.as_ref().map(|d| d.name.clone()),
+             system_device.as_ref().map(|d| d.name.clone())
+@@ -514,6 +522,12 @@ impl RecordingManager {
+         self.recording_saver.set_meeting_name(name);
+     }
+
++    /// Also save microphone and system audio unmixed as `audio_stereo.mp4`
++    /// (L = mic, R = system). Must be called before `start_recording`.
++    pub fn set_save_separate_channels(&mut self, enabled: bool) {
++        self.recording_saver.set_save_separate_channels(enabled);
++    }
++
+     /// Add a structured transcript segment to be saved later
+     pub fn add_transcript_segment(&self, segment: super::recording_saver::TranscriptSegment) {
+         self.recording_saver.add_transcript_segment(segment);
+diff --git a/frontend/src-tauri/src/audio/recording_preferences.rs b/frontend/src-tauri/src/audio/recording_preferences.rs
+index f9ea00c34d..f3cc132024 100644
+--- a/frontend/src-tauri/src/audio/recording_preferences.rs
++++ b/frontend/src-tauri/src/audio/recording_preferences.rs
+@@ -20,6 +20,11 @@ pub struct RecordingPreferences {
+     pub preferred_mic_device: Option<String>,
+     #[serde(default)]
+     pub preferred_system_device: Option<String>,
++    /// Additionally save an unmixed stereo file (`audio_stereo.mp4`) with the
++    /// microphone on the left channel and system audio on the right, so
++    /// downstream tools can tell "me" from "everyone else" (#241).
++    #[serde(default)]
++    pub save_separate_channels: bool,
+     #[cfg(target_os = "macos")]
+     #[serde(default)]
+     pub system_audio_backend: Option<String>,
+@@ -33,6 +38,7 @@ impl Default for RecordingPreferences {
+             file_format: "mp4".to_string(),
+             preferred_mic_device: None,
+             preferred_system_device: None,
++            save_separate_channels: false,
+             #[cfg(target_os = "macos")]
+             system_audio_backend: Some("coreaudio".to_string()),
+         }
+diff --git a/frontend/src-tauri/src/audio/recording_saver.rs b/frontend/src-tauri/src/audio/recording_saver.rs
+index cd955c55c9..45e1f2b68b 100644
+--- a/frontend/src-tauri/src/audio/recording_saver.rs
++++ b/frontend/src-tauri/src/audio/recording_saver.rs
+@@ -11,6 +11,10 @@ use super::recording_state::AudioChunk;
+ use super::audio_processing::create_meeting_folder;
+ use super::incremental_saver::IncrementalAudioSaver;
+
++/// Unmixed stereo recording written when "save separate channels" is enabled
++pub const STEREO_AUDIO_FILE: &str = "audio_stereo.mp4";
++const STEREO_CHECKPOINTS_DIR: &str = ".checkpoints_stereo";
++
+ /// Structured transcript segment for JSON export
+ #[derive(Debug, Clone, Serialize, Deserialize)]
+ pub struct TranscriptSegment {
+@@ -38,6 +42,11 @@ pub struct MeetingMetadata {
+     pub transcript_file: String,
+     pub sample_rate: u32,
+     pub status: String,  // "recording", "completed", "error"
++    /// Unmixed stereo file (L = microphone, R = system audio), when enabled
++    #[serde(default, skip_serializing_if = "Option::is_none")]
++    pub audio_file_stereo: Option<String>,
++    #[serde(default, skip_serializing_if = "Option::is_none")]
++    pub audio_file_stereo_channels: Option<Vec<String>>,
+ }
+
+ #[derive(Debug, Clone, Serialize, Deserialize)]
+@@ -49,6 +58,8 @@ pub struct DeviceInfo {
+ /// New recording saver using incremental saving strategy
+ pub struct RecordingSaver {
+     incremental_saver: Option<Arc<AsyncMutex<IncrementalAudioSaver>>>,
++    stereo_saver: Option<Arc<AsyncMutex<IncrementalAudioSaver>>>,
++    save_separate_channels: bool,
+     meeting_folder: Option<PathBuf>,
+     meeting_name: Option<String>,
+     metadata: Option<MeetingMetadata>,
+@@ -60,6 +71,8 @@ impl RecordingSaver {
+     pub fn new() -> Self {
+         Self {
+             incremental_saver: None,
++            stereo_saver: None,
++            save_separate_channels: false,
+             meeting_folder: None,
+             meeting_name: None,
+             metadata: None,
+@@ -73,6 +86,15 @@ impl RecordingSaver {
+         self.meeting_name = name;
+     }
+
++    /// Enable the additional unmixed stereo recording (L = mic, R = system)
++    pub fn set_save_separate_channels(&mut self, enabled: bool) {
++        self.save_separate_channels = enabled;
++    }
++
++    pub fn save_separate_channels(&self) -> bool {
++        self.save_separate_channels
++    }
++
+     /// Set device information in metadata
+     pub fn set_device_info(&mut self, mic_name: Option<String>, sys_name: Option<String>) {
+         if let Some(ref mut metadata) = self.metadata {
+@@ -135,10 +157,12 @@ impl RecordingSaver {
+     ///
+     /// # Arguments
+     /// * `auto_save` - If true, creates checkpoints and enables saving. If false, audio chunks are discarded.
++    /// * `stereo_receiver` - Interleaved stereo chunks for `audio_stereo.mp4` (separate channels enabled)
+     pub fn start_accumulation(
+         &mut self,
+         auto_save: bool,
+         mut receiver: mpsc::UnboundedReceiver<AudioChunk>,
++        stereo_receiver: Option<mpsc::UnboundedReceiver<AudioChunk>>,
+     ) {
+         if auto_save {
+             info!("Initializing incremental audio saver for recording (auto-save ENABLED)");
+@@ -210,6 +234,23 @@ impl RecordingSaver {
+             info!("Recording saver accumulation task ended");
+         });
+
++        // Separate-channels recording: independent saver and task so a failure here
++        // never affects the mixed audio.mp4
++        if let (Some(mut stereo_receiver), Some(stereo_saver)) = (stereo_receiver, self.stereo_saver.clone()) {
++            let is_saving_clone = self.is_saving.clone();
++            tokio::spawn(async move {
++                while let Some(chunk) = stereo_receiver.recv().await {
++                    if !is_saving_clone.lock().map(|s| *s).unwrap_or(false) {
++                        break;
++                    }
++                    if stereo_saver.lock().await.add_chunk(chunk).is_err() {
++                        error!("Failed to add chunk to stereo saver");
++                    }
++                }
++                info!("Stereo recording accumulation task ended");
++            });
++        }
++
+         // Set saving flag
+         if let Ok(mut is_saving) = self.is_saving.lock() {
+             *is_saving = true;
+@@ -233,6 +274,20 @@ impl RecordingSaver {
+             let incremental_saver = IncrementalAudioSaver::new(meeting_folder.clone(), 48000)?;
+             self.incremental_saver = Some(Arc::new(AsyncMutex::new(incremental_saver)));
+             info!("✅ Incremental audio saver initialized for meeting: {}", meeting_name);
++
++            if self.save_separate_channels {
++                let stereo_saver = std::fs::create_dir_all(meeting_folder.join(STEREO_CHECKPOINTS_DIR))
++                    .map_err(anyhow::Error::from)
++                    .and_then(|_| IncrementalAudioSaver::with_layout(
++                        meeting_folder.clone(), 48000, 2, STEREO_CHECKPOINTS_DIR, STEREO_AUDIO_FILE));
++                match stereo_saver {
++                    Ok(saver) => {
++                        self.stereo_saver = Some(Arc::new(AsyncMutex::new(saver)));
++                        info!("Separate-channels saver initialized ({} : L=microphone, R=system)", STEREO_AUDIO_FILE);
++                    }
++                    Err(e) => warn!("Separate-channels recording disabled for this meeting: {}", e),
++                }
++            }
+         } else {
+             info!("⚠️  Skipped incremental audio saver (auto-save disabled)");
+         }
+@@ -253,6 +308,8 @@ impl RecordingSaver {
+             transcript_file: "transcripts.json".to_string(),
+             sample_rate: 48000,
+             status: "recording".to_string(),
++            audio_file_stereo: None,
++            audio_file_stereo_channels: None,
+         };
+
+         // Write initial metadata.json
+@@ -390,6 +447,19 @@ impl RecordingSaver {
+             return Err("No incremental saver initialized".to_string());
+         };
+
++        // Finalize the separate-channels file; failures only cost the stereo file
++        let stereo_audio_path = if let Some(saver_arc) = &self.stereo_saver {
++            match saver_arc.lock().await.finalize().await {
++                Ok(path) => Some(path),
++                Err(e) => {
++                    warn!("Failed to finalize separate-channels audio: {}", e);
++                    None
++                }
++            }
++        } else {
++            None
++        };
++
+         // Save final transcripts.json with validation
+         if let Some(folder) = &self.meeting_folder {
+             if let Err(e) = self.write_transcripts_json(folder) {
+@@ -410,6 +480,10 @@ impl RecordingSaver {
+         if let (Some(folder), Some(mut metadata)) = (&self.meeting_folder, self.metadata.clone()) {
+             metadata.status = "completed".to_string();
+             metadata.completed_at = Some(chrono::Utc::now().to_rfc3339());
++            if stereo_audio_path.is_some() {
++                metadata.audio_file_stereo = Some(STEREO_AUDIO_FILE.to_string());
++                metadata.audio_file_stereo_channels = Some(vec!["microphone".to_string(), "system".to_string()]);
++            }
+
+             // Use actual recording duration from RecordingState (more accurate than transcript segments)
+             // Falls back to last transcript segment if duration not provided
+diff --git a/frontend/src/components/RecordingSettings.tsx b/frontend/src/components/RecordingSettings.tsx
+index 85c18f39ba..540dcb322c 100644
+--- a/frontend/src/components/RecordingSettings.tsx
++++ b/frontend/src/components/RecordingSettings.tsx
+@@ -14,6 +14,7 @@ export interface RecordingPreferences {
+   file_format: string;
+   preferred_mic_device: string | null;
+   preferred_system_device: string | null;
++  save_separate_channels?: boolean;
+ }
+
+ interface RecordingSettingsProps {
+@@ -26,7 +27,8 @@ export function RecordingSettings({ onSave }: RecordingSettingsProps) {
+     auto_save: true,
+     file_format: 'mp4',
+     preferred_mic_device: null,
+-    preferred_system_device: null
++    preferred_system_device: null,
++    save_separate_channels: false
+   });
+   const [loading, setLoading] = useState(true);
+   const [saving, setSaving] = useState(false);
+@@ -83,6 +85,16 @@ export function RecordingSettings({ onSave }: RecordingSettingsProps) {
+     });
+   };
+
++  const handleSeparateChannelsToggle = async (enabled: boolean) => {
++    const newPreferences = { ...preferences, save_separate_channels: enabled };
++    setPreferences(newPreferences);
++    await savePreferences(newPreferences);
++
++    await Analytics.track('separate_channels_recording_toggled', {
++      enabled: enabled.toString()
++    });
++  };
++
+   const handleDeviceChange = async (devices: SelectedDevices) => {
+     const newPreferences = {
+       ...preferences,
+@@ -202,6 +214,21 @@ export function RecordingSettings({ onSave }: RecordingSettingsProps) {
+             </button>
+           </div>
+
++          <div className="flex items-center justify-between p-4 border rounded-lg">
++            <div className="flex-1">
++              <div className="font-medium">Save Separate Channels</div>
++              <div className="text-sm text-gray-600">
++                Also save an unmixed stereo file (audio_stereo.mp4): microphone on the left channel,
++                system audio on the right. Useful for speaker attribution in external tools.
++              </div>
++            </div>
++            <Switch
++              checked={!!preferences.save_separate_channels}
++              onCheckedChange={handleSeparateChannelsToggle}
++              disabled={saving || isRecording}
++            />
++          </div>
++
+           <div className="p-4 border rounded-lg bg-blue-50">
+             <div className="text-sm text-blue-800">
+               <strong>File Format:</strong> {preferences.file_format.toUpperCase()} files

@@ -65,7 +65,6 @@
       kdePackages.breeze-icons
 
       swappy
-      meetily
       inputs.dankaiusage.packages.${pkgs.stdenv.hostPlatform.system}.default
       smartgit
     ];
