@@ -75,6 +75,11 @@
 
   networking.hostName = "nixpad";
   networking.networkmanager.enable = true;
+  # Wi-Fi hotspot (NM "shared" mode): let clients reach NM's dnsmasq for DHCP and DNS.
+  networking.firewall.interfaces.wlp0s20f3 = {
+    allowedUDPPorts = [ 53 67 ];
+    allowedTCPPorts = [ 53 ];
+  };
 
   nixpkgs.config = {
     allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) outputs.allowed-unfree-packages;
