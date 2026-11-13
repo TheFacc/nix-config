@@ -1,4 +1,3 @@
-import base64
 import importlib.util
 import json
 import subprocess
@@ -220,36 +219,34 @@ class VaultHistoryTests(unittest.TestCase):
             self.assertNotIn("l mod", page)  # too long to word-diff: plain -/+ rows
             self.assertIn("Save\u2028evil", (output / "index.html").read_text())
 
-    def test_server_requires_auth_for_index_and_commit_pages(self):
+    def test_server_requires_proxy_secret_and_hides_directory_listings(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / "index.html").write_text("history")
             (root / "commit.html").write_text("diff")
-            server = vault_history.make_server("127.0.0.1", 0, root, "facc", "secret")
+            (root / "sub").mkdir()
+            server = vault_history.make_server("127.0.0.1", 0, root, "secret")
             thread = threading.Thread(target=server.serve_forever, daemon=True)
             thread.start()
+
+            def get(path, secret=None):
+                headers = {"X-Vault-Proxy": secret} if secret is not None else {}
+                return urlopen(Request(f"http://127.0.0.1:{server.server_port}{path}", headers=headers))
+
+            def assert_status(path, secret, code):
+                with self.assertRaises(HTTPError) as error:
+                    get(path, secret)
+                self.assertEqual(error.exception.code, code)
+                error.exception.close()
+
             try:
                 for path in ("/", "/commit.html"):
-                    with self.assertRaises(HTTPError) as error:
-                        urlopen(f"http://127.0.0.1:{server.server_port}{path}")
-                    self.assertEqual(error.exception.code, 401)
-                    error.exception.close()
-                    wrong = base64.b64encode(b"facc:wrong").decode("ascii")
-                    wrong_request = Request(
-                        f"http://127.0.0.1:{server.server_port}{path}",
-                        headers={"Authorization": f"Basic {wrong}"},
-                    )
-                    with self.assertRaises(HTTPError) as error:
-                        urlopen(wrong_request)
-                    self.assertEqual(error.exception.code, 401)
-                    error.exception.close()
-                    token = base64.b64encode(b"facc:secret").decode("ascii")
-                    request = Request(
-                        f"http://127.0.0.1:{server.server_port}{path}",
-                        headers={"Authorization": f"Basic {token}"},
-                    )
-                    with urlopen(request) as response:
+                    assert_status(path, None, 403)
+                    assert_status(path, "wrong", 403)
+                    with get(path, "secret") as response:
                         self.assertEqual(response.status, 200)
+                        self.assertEqual(response.headers["Cache-Control"], "no-store")
+                assert_status("/sub/", "secret", 404)
             finally:
                 server.shutdown()
                 server.server_close()

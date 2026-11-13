@@ -1,12 +1,10 @@
-"""Render vault Git history as static diff pages and serve them with Basic Auth."""
+"""Render vault Git history as static diff pages and serve them to the local reverse proxy."""
 
 import argparse
-import base64
-import binascii
 import codecs
 import difflib
-import html
 import hmac
+import html
 import json
 import os
 import re
@@ -472,29 +470,19 @@ def commit_hermes(repo, work_tree, message, author_email, git_bin="git"):
         index_path.unlink(missing_ok=True)
 
 
-def make_server(host, port, directory, username, password):
-    expected = f"{username}:{password}".encode("utf-8")
+def make_server(host, port, directory, proxy_secret):
+    """Loopback-only static server: Caddy gates it behind the Hermes dashboard login and
+    proves it with a shared secret header, so local processes cannot bypass the login."""
+    expected = proxy_secret.encode("utf-8")
 
     class Handler(SimpleHTTPRequestHandler):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, directory=str(directory), **kwargs)
 
-        def _authorized(self):
-            scheme, _, token = self.headers.get("Authorization", "").partition(" ")
-            if scheme.lower() != "basic":
-                return False
-            try:
-                supplied = base64.b64decode(token, validate=True)
-            except (binascii.Error, ValueError):
-                return False
-            return hmac.compare_digest(supplied, expected)
-
         def _respond(self, method):
-            if not self._authorized():
-                self.send_response(401)
-                self.send_header("WWW-Authenticate", 'Basic realm="Vault history"')
-                self.send_header("Content-Length", "0")
-                self.end_headers()
+            supplied = self.headers.get("X-Vault-Proxy", "").encode("utf-8")
+            if not hmac.compare_digest(supplied, expected):
+                self.send_error(403)
                 return
             method()
 
@@ -542,8 +530,7 @@ def main():
         commit_hermes(args.repo, args.work_tree, args.message, args.author_email, args.git_bin)
     else:
         with make_server("127.0.0.1", args.port, args.directory,
-                         os.environ["HERMES_DASHBOARD_BASIC_AUTH_USERNAME"],
-                         os.environ["HERMES_DASHBOARD_BASIC_AUTH_PASSWORD"]) as server:
+                         os.environ["VAULT_PROXY_SECRET"]) as server:
             server.serve_forever()
 
 

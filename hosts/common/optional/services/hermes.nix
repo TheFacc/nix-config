@@ -127,7 +127,7 @@ in
       Type = "simple";
       User = "vault-history-web";
       Group = "vault-history";
-      EnvironmentFile = config.sops.templates."vault-history-auth".path;
+      EnvironmentFile = config.sops.templates."vault-history-env".path;
       ExecStart = "${pkgs.python3}/bin/python3 ${./vault_history.py} serve ${historyDir} --port 9121";
       Restart = "on-failure";
       NoNewPrivileges = true;
@@ -187,16 +187,18 @@ in
       HERMES_DASHBOARD_BASIC_AUTH_SECRET=${p."services/hermes/dashboard_secret"}
     '';
   };
-  sops.templates."vault-history-auth" = lib.mkIf nixexSops {
+  # Caddy sends this in X-Vault-Proxy, so local processes cannot skip the login below
+  sops.templates."vault-history-env" = lib.mkIf nixexSops {
     restartUnits = [ "vault-history-web.service" ];
-    content = let p = config.sops.placeholder; in ''
-      HERMES_DASHBOARD_BASIC_AUTH_USERNAME=facc
-      HERMES_DASHBOARD_BASIC_AUTH_PASSWORD=${p."services/hermes/dashboard_password"}
+    content = ''
+      VAULT_PROXY_SECRET=${config.sops.placeholder."services/hermes/dashboard_secret"}
     '';
   };
 
   # Caddy (same pattern as n8n.nix: Tailscale machine certs)
   # public_url above makes the dashboard accept the tailnet Host/Origin and enables its login gate.
+  # /diffs/ reuses that login: the dashboard session cookie is checked against /api/auth/me,
+  # and a logged-out request goes to the login form, which returns to the diff afterwards.
   sops.templates."caddy-nixex-hermes" = lib.mkIf nixexSops {
     restartUnits = [ "caddy.service" ];
     owner = config.services.caddy.user;
@@ -208,7 +210,16 @@ in
       https://${hostName}.${t}.ts.net:${publicPort} {
         redir /diffs /diffs/ 308
         handle_path /diffs/* {
-          reverse_proxy 127.0.0.1:9121
+          forward_auth 127.0.0.1:${toString cfg.backend.port} {
+            uri /api/auth/me
+            @login status 401
+            handle_response @login {
+              redir * /login?next={http.request.orig_uri.path} 302
+            }
+          }
+          reverse_proxy 127.0.0.1:9121 {
+            header_up X-Vault-Proxy "${config.sops.placeholder."services/hermes/dashboard_secret"}"
+          }
         }
         handle {
           reverse_proxy 127.0.0.1:${toString cfg.backend.port}
