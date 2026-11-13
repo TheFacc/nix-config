@@ -67,14 +67,7 @@
       swappy
       meetily
       inputs.dankaiusage.packages.${pkgs.stdenv.hostPlatform.system}.default
-      # TODO drop the override once nixpkgs' hash matches again: upstream
-      # re-uploaded the 26.1.052 tarball under the same URL
-      (smartgit.overrideAttrs (old: {
-        src = fetchurl {
-          url = builtins.head old.src.urls;
-          hash = "sha256-2KjUNabcN56cIBORN++YZlx2JuiuN/JMEDVjHo0wqw8=";
-        };
-      }))
+      smartgit
     ];
 
     # DMS owns Niri's idle policy. Merge only these keys so its writable
