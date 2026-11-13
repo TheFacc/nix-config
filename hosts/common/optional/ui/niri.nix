@@ -18,6 +18,11 @@
     ];
   };
 
+  # The login password opens the login keyring, and with it the SSH key
+  # passphrases gcr-ssh-agent keeps there (home ssh.nix). A fingerprint login
+  # has no password, so the keyring then asks for it on first use.
+  security.pam.services.greetd.enableGnomeKeyring = true;
+
   services.greetd = {
     enable = true;
     settings = {

@@ -1,8 +1,19 @@
-{ lib, pkgs, ... }:
+{ lib, pkgs, ... } @ args:
+let
+  # gnome-keyring's agent: lists every ~/.ssh key, asks each passphrase once
+  # ("unlock when logged in") and keeps it in the login keyring, which PAM
+  # opens at login. So agents and other non-interactive git get the keys.
+  gcr = (args.osConfig or null).services.gnome.gcr-ssh-agent.enable or false;
+in
 {
-  # One agent for shells and desktop apps on every host. Unlock the existing
-  # keys after login with: ssh-add ~/.ssh/id_facc ~/.ssh/id_becq
-  services.ssh-agent.enable = true;
+  # One agent for shells and desktop apps on every host. Without gcr, unlock
+  # the keys after login with: ssh-add ~/.ssh/id_facc ~/.ssh/id_becq
+  services.ssh-agent.enable = !gcr;
+  sshAuthSock = lib.mkIf gcr {
+    enable = true;
+    initialization.bash = ''export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/gcr/ssh"'';
+    systemd.socketProviderUnit = "gcr-ssh-agent.socket";
+  };
 
   # ~/.ssh/config is a nix-store symlink; in user namespaces (AppImages via
   # bwrap, agent sandboxes) root is unmapped, it looks nobody-owned and ssh
