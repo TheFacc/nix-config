@@ -15,6 +15,7 @@ let
       withFocusFollowsMouse;
   dolphin = "${pkgs.kdePackages.dolphin}/bin/dolphin";
   ghostty = "${pkgs.ghostty}/bin/ghostty";
+  gdbus = "${pkgs.glib.bin}/bin/gdbus";
   screenshotRegion = pkgs.writeShellScript "niri-screenshot-region-swappy" ''
     set -euo pipefail
 
@@ -190,6 +191,13 @@ in
               spawn "${screenshotScreen}";
           }
           Alt+XF86Launch1 { screenshot-window; }
+
+          // T3 Code snapshot: asks the running app over D-Bus to capture.
+          // config.kdl is read-only (Nix store), so T3's setup wizard
+          // can't add this itself; use "I've added the shortcut" there.
+          Alt+Shift+S repeat=false hotkey-overlay-title="T3 Code Snapshot" {
+              spawn "${gdbus}" "call" "--session" "--dest" "com.t3tools.T3Code.SnapShot" "--object-path" "/com/t3tools/SnapShot" "--method" "com.t3tools.SnapShot.Capture";
+          }
 
           // === Audio controls ===
           XF86AudioRaiseVolume allow-when-locked=true {
