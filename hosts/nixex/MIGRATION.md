@@ -72,6 +72,24 @@ grep -i kernelmodules /tmp/hw-generated.nix hosts/nixex/hardware-configuration.n
 If the generated module lists differ (e.g. `thunderbolt`, `vmd`), copy them into
 `hosts/nixex/hardware-configuration.nix`. Keep everything else in the template.
 
+Units that must not run on both boxes at once (one Telegram poller per bot token, Syncthing,
+vault pushes). Saved in facc's home so later steps load it with `. ~/nixex-units.sh` (bash or zsh);
+timers and path units come first so nothing restarts a stopped service:
+
+```sh
+cat > /mnt/home/facc/nixex-units.sh <<'EOF'
+units=(
+  vaultsync.timer servermon-arr.timer vault-snapshot.timer vault-snapshot-offsite.timer
+  cloudflare-archive.timer jellyfin-backup.timer
+  vaultsync-on-change.path vault-save-request.path
+  vaultsync vaultsync-watch-hermes vault-snapshot vault-snapshot-offsite cloudflare-archive jellyfin-backup
+  hermes-agent hermes-backend vault-history-web telegram-bot-api tg-c2c n8n caddy
+  plex tautulli jellyfin sonarr sonarr-dupsvc radarr radarr-dupsvc prowlarr qBittorrent flaresolverr
+  podman-tinyMediaManager syncthing servermon servermon-arr
+)
+EOF
+```
+
 ```sh
 nixos-install --flake 'path:.#nixex' --no-root-passwd
 nixos-enter --root /mnt -c 'passwd facc'
@@ -83,11 +101,12 @@ First boot asks for the LUKS passphrase. Log in as facc on the console, then:
 
 ```sh
 sudo tailscale up --ssh   # open the printed URL; the box joins as <new-ts-name>
+. ~/nixex-units.sh && sudo systemctl stop "${units[@]}"
 ip -br link               # update network.interfaces in services/servermon.nix if not enp3s0
 ```
 
-Expect Telegram errors (Hermes, tg-c2c, servermon) while both boxes run with the same bot tokens:
-Telegram allows one poller per token. Keep the gap to cutover short.
+Until cutover, re-run the stop line after every boot (steps 3 and 4 reboot): the services start
+again and would fight the old box for the bot tokens.
 
 ## 3. Secure Boot and TPM unlock
 
@@ -121,6 +140,7 @@ Close the lid, then from another machine:
 ```sh
 ssh -t facc@<new-ts-name> sudo reboot
 ssh facc@<new-ts-name> systemctl is-system-running
+ssh -t facc@<new-ts-name> '. ~/nixex-units.sh && sudo systemctl stop "${units[@]}"'
 ```
 
 Desktop (LightDM logs facc into XFCE):
@@ -140,17 +160,13 @@ Connect from another RustDesk to the box's Tailscale name or IP.
 2. Stop everything on both boxes, from the new one:
 
 ```sh
-UNITS="vaultsync.timer servermon-arr.timer vault-snapshot.timer vault-snapshot-offsite.timer \
-  cloudflare-archive.timer jellyfin-backup.timer \
-  vaultsync vaultsync-watch-hermes vault-snapshot vault-snapshot-offsite cloudflare-archive jellyfin-backup \
-  hermes-agent hermes-backend vault-history-web telegram-bot-api tg-c2c n8n caddy \
-  plex tautulli jellyfin sonarr sonarr-dupsvc radarr radarr-dupsvc prowlarr qBittorrent flaresolverr \
-  podman-tinyMediaManager syncthing servermon servermon-arr"
-ssh root@nixex-old "systemctl stop $UNITS display-manager"
-sudo systemctl stop $UNITS
+. ~/nixex-units.sh
+ssh root@nixex-old systemctl stop "${units[@]}" display-manager
+sudo systemctl stop "${units[@]}"
 ```
 
-`root@` goes through Tailscale SSH; the default tailnet policy allows it. Units that don't exist only print an error.
+The array expands locally, so both boxes get the same list. `root@` goes through Tailscale SSH;
+the default tailnet policy allows it. Units the old box lacks only print an error.
 
 3. Copy state, as root on the new box. n8n and prowlarr use DynamicUser, so their data is under `/var/lib/private`.
    `/var/lib/tailscale` is not copied: the new box keeps its own node and takes the name in step 5.
