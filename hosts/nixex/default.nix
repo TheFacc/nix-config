@@ -150,7 +150,14 @@
     };
     lanzaboote = {
       enable = true;
-      pkiBundle = "/var/lib/sbctl";
+      pkiBundle = "/var/lib/sbctl"; # on @: never wipe it, the firmware trusts these keys
+      # First boot makes the keys, re-signs and reboots; systemd-boot then enrolls
+      # them (firmware in Setup Mode), Microsoft keys included for option ROMs
+      autoGenerateKeys.enable = true;
+      autoEnrollKeys = {
+        enable = true;
+        autoReboot = true;
+      };
     };
     initrd.luks.devices."cryptroot" = {
       crypttabExtraOpts = [ "tpm2-device=auto" ];

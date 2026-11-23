@@ -10,7 +10,8 @@ Device paths are examples (`/dev/nvme0n1`, `p1` ESP, `p2` LUKS): check with `lsb
 
 BIOS (F2 on the laptop):
 - TPM on (Intel PTT / "TPM device").
-- Secure Boot **off** for now.
+- Secure Boot on, in Setup Mode: delete/reset the platform key (PK) only. Don't pick
+  "clear all Secure Boot keys" if it also drops dbx.
 - Storage in AHCI mode, not RAID/RST/VMD, if the NVMe doesn't show up in the installer.
 
 On a USB stick (wipe it afterwards), from a machine that has them:
@@ -71,17 +72,6 @@ grep -i kernelmodules /tmp/hw-generated.nix hosts/nixex/hardware-configuration.n
 If the generated module lists differ (e.g. `thunderbolt`, `vmd`), copy them into
 `hosts/nixex/hardware-configuration.nix`. Keep everything else in the template.
 
-Secure Boot keys, created now so lanzaboote signs the boot files during install:
-
-```sh
-nix shell nixpkgs#sbctl -c sbctl create-keys
-mkdir -p /mnt/var/lib && cp -a /var/lib/sbctl /mnt/var/lib/
-```
-
-If the install fails on missing keys, set `boot.lanzaboote.autoGenerateKeys.enable = true;` in
-`hosts/nixex/default.nix` instead (keys are made on first boot, unsigned files allowed until then),
-then remove it and rebuild once the keys exist.
-
 ```sh
 nixos-install --flake 'path:.#nixex' --no-root-passwd
 nixos-enter --root /mnt -c 'passwd facc'
@@ -101,19 +91,17 @@ Telegram allows one poller per token. Keep the gap to cutover short.
 
 ## 3. Secure Boot and TPM unlock
 
-```sh
-sudo sbctl verify            # all files signed, except kernel-*.efi
-sudo systemctl reboot --firmware-setup
-```
+lanzaboote provisions Secure Boot by itself. The install boots unsigned; on first boot it generates
+keys in `/var/lib/sbctl`, re-signs the ESP and reboots once (passphrase again). On that boot
+systemd-boot enrolls the keys (Microsoft's included) and Secure Boot starts enforcing.
+`/var/lib/sbctl` lives on `@`: don't wipe it, or the box can't sign new generations.
 
-In the BIOS: enable Secure Boot and put it in Setup Mode (delete/reset the platform key).
-Don't pick "clear all Secure Boot keys" if it also drops dbx. Boot NixOS, then:
+Once it is back up:
 
 ```sh
-sudo sbctl status            # Setup Mode: Enabled
-sudo sbctl enroll-keys --microsoft
-sudo reboot
 bootctl status | grep 'Secure Boot'   # enabled (user)
+sudo sbctl status                     # Installed, Setup Mode: Disabled, Secure Boot: Enabled
+sudo sbctl verify                     # all files signed, except kernel-*.efi
 sudo systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=7 /dev/nvme0n1p2
 sudo systemd-cryptenroll /dev/nvme0n1p2   # slots: password + tpm2
 sudo reboot                  # no keyboard input: it must reach the login prompt by itself
