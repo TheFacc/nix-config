@@ -168,27 +168,52 @@ sudo systemctl stop "${units[@]}"
 The array expands locally, so both boxes get the same list. `root@` goes through Tailscale SSH;
 the default tailnet policy allows it. Units the old box lacks only print an error.
 
-3. Copy state, as root on the new box. n8n and prowlarr use DynamicUser, so their data is under `/var/lib/private`.
-   `/var/lib/tailscale` is not copied: the new box keeps its own node and takes the name in step 5.
+3. Check that both boxes give the same numbers to the same names. State is copied with
+   `--numeric-ids`, so a mismatch hands files to the wrong account:
+
+```sh
+diff <(ssh root@nixex-old getent passwd | cut -d: -f1,3 | sort) <(getent passwd | cut -d: -f1,3 | sort)
+diff <(ssh root@nixex-old getent group | cut -d: -f1,3 | sort) <(getent group | cut -d: -f1,3 | sort)
+```
+
+   Fine: accounts that own nothing copied, such as sddm on the old box, lightdm on the new one,
+   wpa_supplicant, geoclue, fwupd-refresh, systemd-oom, nscd, podman, resolvconf.
+   Blocker: a different number for facc, media, plex, caddy, sonarr, radarr, syncthing or any
+   account pinned in `hosts/nixex/default.nix`. Pin the old number there, rebuild with
+   `sudo nixos-rebuild switch --flake 'path:.#nixex'`, re-run the stop line and this check.
+
+4. Copy state, as root on the new box. n8n and prowlarr use DynamicUser, so their data is under `/var/lib/private`.
+   `/var/lib/tailscale` is not copied: the new box keeps its own node and takes the name in 5.7.
+   The copy stops at the first failure and ends with `COPY OK` only if everything went through.
 
 ```sh
 sudo -i
 install -d -m 0700 /var/lib/private
-for d in caddy hermes jellyfin obsidian-vault plex plexpy radarr sonarr servermon \
-         telegram-bot-api telegram-bot-api-secrets vault-history vault-snapshot vaultsync containers \
-         private/n8n private/prowlarr; do
-  rsync -aHAX --numeric-ids --delete --mkpath "root@nixex-old:/var/lib/$d/" "/var/lib/$d/"
-done
-# whole home (tmm-config, rclone, syncthing identity, gh, TgC2C...); keeps the new nix-config checkout
-rsync -aHAX --numeric-ids --exclude=.cache/ --exclude=dotfiles/nix-config/ \
-  root@nixex-old:/home/facc/ /home/facc/
+(
+  for d in caddy hermes jellyfin obsidian-vault plex plexpy radarr sonarr servermon \
+           telegram-bot-api telegram-bot-api-secrets vault-history vault-snapshot vaultsync containers \
+           private/n8n private/prowlarr; do
+    rsync -aHAX --numeric-ids --delete --mkpath "root@nixex-old:/var/lib/$d/" "/var/lib/$d/" \
+      || { echo "FAILED: $d"; exit 1; }
+  done
+  # whole home (tmm-config, rclone, syncthing identity, gh, TgC2C...); keeps the new nix-config checkout
+  rsync -aHAX --numeric-ids --exclude=.cache/ --exclude=dotfiles/nix-config/ \
+    root@nixex-old:/home/facc/ /home/facc/ || { echo "FAILED: home"; exit 1; }
+  echo "COPY OK"
+)
+```
+
+5. Power off the old box, only once 5.3 shows no blocker and 5.4 printed `COPY OK`.
+   Otherwise fix the cause and re-run 5.4 (rsync only sends the difference).
+
+```sh
 ssh root@nixex-old poweroff
 ```
 
-4. Move the disks: 16TB (USB), 16TBb, ssd512. If ssd512 goes into a USB enclosure, put its
+6. Move the disks: 16TB (USB), 16TBb, ssd512. If ssd512 goes into a USB enclosure, put its
    `/dev/disk/by-id/usb-...` path in `services/servermon.nix` (smartd) and add `-d sat`.
-5. Tailscale admin console: rename `<new-ts-name>` to `nixex` (untick auto-generate).
-6. Commit the hardware config and any servermon fixes, then rebuild and reboot:
+7. Tailscale admin console: rename `<new-ts-name>` to `nixex` (untick auto-generate).
+8. Commit the hardware config and any servermon fixes, then rebuild and reboot:
 
 ```sh
 cd ~/dotfiles/nix-config
@@ -205,9 +230,8 @@ sudo reboot
 systemctl --failed                    # empty
 systemctl list-timers                 # the 6 timers from step 5 are scheduled
 findmnt /mnt/media/16TB /mnt/media/16TBb /mnt/mediapool/mainet /mnt/ssd512
-id facc                               # uid 1000, media(993)
-for u in jellyfin prowlarr n8n hermes servermon vaultsync vault-history-web cloudflare-archive; do id $u; done
-# expect 994 993 988 985 986 987 984 983, as in hosts/nixex/default.nix
+sudo find /var/lib /home/facc /mnt/ssd512 /mnt/media/16TB /mnt/media/16TBb -xdev \
+  \( -nouser -o -nogroup \) -print | head   # empty: every copied file has a known owner
 sudo systemctl start vaultsync.service vault-snapshot.service
 journalctl -u vaultsync -u vault-snapshot -n 30
 journalctl -u smartd -b | grep -i -e nvme -e Seagate -e ssd512 -e Fanxiang
