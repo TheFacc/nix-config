@@ -162,11 +162,6 @@
           modules = [ ./hosts/nixossone ];
           specialArgs = { inherit inputs outputs; };
       };
-      # light boi
-      "nixook" = lib.nixosSystem {
-          modules = [ ./hosts/nixook ];
-          specialArgs = { inherit inputs outputs; };
-      };
       # theatre
       "nixex" = lib.nixosSystem {
         modules = [ ./hosts/nixex ];
@@ -190,12 +185,6 @@
         modules = [
           ./home/facc/nixossone.nix
         ];
-        pkgs = pkgsFor.x86_64-linux;
-        extraSpecialArgs = { inherit inputs outputs; };
-      };
-      # light boi
-      "facc@nixook" = lib.homeManagerConfiguration {
-        modules = [ ./home/facc/nixook.nix ];
         pkgs = pkgsFor.x86_64-linux;
         extraSpecialArgs = { inherit inputs outputs; };
       };
