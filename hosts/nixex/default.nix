@@ -111,6 +111,10 @@
     HandleLidSwitch = "ignore";
   };
 
+  # ssd512 is nofail (USB enclosure), so nothing orders services after it: wait for it,
+  # or qBittorrent writes its downloads into the empty mountpoint on the root disk.
+  systemd.services.qBittorrent.unitConfig.RequiresMountsFor = [ "/mnt/ssd512" ];
+
   # IDs as allocated on the old nixex: rsync'd /var/lib, the vault ACLs and the media disks
   # (facc:media) keep their owners. Users/groups not listed here are already static upstream.
   users.users = lib.mapAttrs (_: uid: { inherit uid; }) {
