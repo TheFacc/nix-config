@@ -52,8 +52,8 @@ in
       devices = [
         # USB bridge needs SAT passthrough; `removable` = don't die if it's unplugged at start
         { device = "/dev/disk/by-id/usb-Seagate_Expansion_HDD_00000000NT174VPM-0:0"; options = "-d removable -d sat"; }
-        # /mnt/ssd512. In a USB enclosure its by-id changes: put the usb-... path from
-        # `ls -l /dev/disk/by-id` here on install day and add `-d sat`
+        # /mnt/ssd512, now in a USB enclosure (the laptop has no 2.5" bay): on install day put
+        # its usb-... path from `ls -l /dev/disk/by-id` here and add `-d sat`
         { device = "/dev/disk/by-id/ata-Fanxiang_S101_512GB_AA000000000000063100"; options = "-d removable"; }
         { device = "/dev/nvme0"; options = "-d nvme"; } # system
         # TODO 16TBb: add its /dev/disk/by-id/usb-... path once it's plugged in again

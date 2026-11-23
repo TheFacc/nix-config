@@ -23,7 +23,8 @@ the old box has no SSH host keys (Tailscale SSH only) and sops reads the age key
 
 ## 2. Install
 
-Boot the NixOS installer, get online (Wi-Fi or Ethernet), then:
+Use Ethernet if you can: it comes up by itself on the installed system, Wi-Fi has to be set up again
+after install. Boot the NixOS installer, get online, then:
 
 ```sh
 sudo -i
@@ -100,6 +101,7 @@ reboot
 First boot asks for the LUKS passphrase. Log in as facc on the console, then:
 
 ```sh
+sudo nmcli --ask device wifi connect '<ssid>'   # Wi-Fi only; prompts for the password
 sudo tailscale up --ssh   # open the printed URL; the box joins as <new-ts-name>
 . ~/nixex-units.sh && sudo systemctl stop "${units[@]}"
 ip -br link               # update network.interfaces in services/servermon.nix if not enp3s0
@@ -135,12 +137,16 @@ sudo systemd-cryptenroll --wipe-slot=tpm2 --tpm2-device=auto --tpm2-pcrs=7 /dev/
 
 ## 4. Headless check and desktop on demand
 
-Close the lid, then from another machine:
+Close the lid, then from another machine (zsh or bash):
 
 ```sh
-ssh -t facc@<new-ts-name> sudo reboot
-ssh facc@<new-ts-name> systemctl is-system-running
-ssh -t facc@<new-ts-name> '. ~/nixex-units.sh && sudo systemctl stop "${units[@]}"'
+h=facc@<new-ts-name>
+before=$(ssh $h cat /proc/sys/kernel/random/boot_id)
+ssh -t $h sudo reboot
+# give it a couple of minutes: nobody types the passphrase, the TPM must unlock the disk
+[ "$(ssh $h cat /proc/sys/kernel/random/boot_id)" != "$before" ] && echo REBOOTED
+ssh $h systemctl is-system-running   # running; degraded means: systemctl --failed
+ssh -t $h '. ~/nixex-units.sh && sudo systemctl stop "${units[@]}"'
 ```
 
 Desktop (LightDM logs facc into XFCE):
@@ -201,6 +207,7 @@ install -d -m 0700 /var/lib/private
     root@nixex-old:/home/facc/ /home/facc/ || { echo "FAILED: home"; exit 1; }
   echo "COPY OK"
 )
+exit   # back to facc
 ```
 
 5. Power off the old box, only once 5.3 shows no blocker and 5.4 printed `COPY OK`.
@@ -210,18 +217,18 @@ install -d -m 0700 /var/lib/private
 ssh root@nixex-old poweroff
 ```
 
-6. Move the disks: 16TB (USB), 16TBb, ssd512. If ssd512 goes into a USB enclosure, put its
-   `/dev/disk/by-id/usb-...` path in `services/servermon.nix` (smartd) and add `-d sat`.
+6. Move the disks: 16TB (USB), 16TBb, ssd512. The laptop has no 2.5" bay, so ssd512 goes into a
+   USB enclosure and its by-id changes: in `services/servermon.nix` (smartd), replace its `ata-...`
+   path with the `usb-...` one from `ls -l /dev/disk/by-id` and add `-d sat`.
 7. Tailscale admin console: rename `<new-ts-name>` to `nixex` (untick auto-generate).
 8. Commit the hardware config and any servermon fixes, then rebuild and reboot:
 
 ```sh
-cd ~/dotfiles/nix-config
+cd /home/facc/dotfiles/nix-config
 git add hosts/nixex/hardware-configuration.nix hosts/common/optional/services/servermon.nix
 git commit -m "chore(nixex): fill in the hardware config from install day"
 git push
-sudo nixos-rebuild boot --flake 'path:.#nixex'
-sudo reboot
+sudo nixos-rebuild boot --flake 'path:.#nixex' && sudo reboot
 ```
 
 ## 6. Verify
@@ -229,12 +236,14 @@ sudo reboot
 ```sh
 systemctl --failed                    # empty
 systemctl list-timers                 # the 6 timers from step 5 are scheduled
-findmnt /mnt/media/16TB /mnt/media/16TBb /mnt/mediapool/mainet /mnt/ssd512
+for m in /mnt/media/16TB /mnt/media/16TBb /mnt/mediapool/mainet /mnt/ssd512; do
+  findmnt "$m" >/dev/null || echo "MISSING $m"
+done                                  # prints nothing
 sudo find /var/lib /home/facc /mnt/ssd512 /mnt/media/16TB /mnt/media/16TBb -xdev \
   \( -nouser -o -nogroup \) -print | head   # empty: every copied file has a known owner
 sudo systemctl start vaultsync.service vault-snapshot.service
 journalctl -u vaultsync -u vault-snapshot -n 30
-journalctl -u smartd -b | grep -i -e nvme -e Seagate -e ssd512 -e Fanxiang
+journalctl -u smartd -b | grep 'monitor" list'   # one line each: usb-Seagate..., ssd512's usb-..., nvme0
 bootctl status | grep 'Secure Boot'
 ```
 
@@ -245,6 +254,7 @@ By hand:
 - Hermes dashboard on `https://nixex.<tailnet>.ts.net:8443` loads; if caddy shows a cert error,
   `sudo systemctl restart caddy`.
 - servermon sends its Telegram startup message.
+- The headless check from step 4 against `facc@nixex`, disks attached (skip its stop line).
 
 ## 7. Rollback
 
@@ -254,7 +264,7 @@ The old box and its system disk are unchanged.
 2. Tailscale admin console: rename the new box (e.g. `nixex-new`) and `nixex-old` back to `nixex`.
 3. Boot the old box. Its state is as of the cutover: anything changed on the new box since is not there.
 
-Don't rebuild the old box from this branch or from `flakes` after step 8. Boot its existing generation.
+Boot its existing generation and don't rebuild it: this branch, and `flakes` once merged, only fit the new laptop.
 
 ## 8. Merge
 
