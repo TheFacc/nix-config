@@ -111,7 +111,27 @@
     HandleLidSwitch = "ignore";
   };
 
-  users.groups.media = {};
+  # IDs as allocated on the old nixex: rsync'd /var/lib, the vault ACLs and the media disks
+  # (facc:media) keep their owners. Users/groups not listed here are already static upstream.
+  users.users = lib.mapAttrs (_: uid: { inherit uid; }) {
+    cloudflare-archive = 983;
+    vault-history-web = 984;
+    hermes = 985;
+    servermon = 986;
+    vaultsync = 987;
+    n8n = 988;
+    prowlarr = 993;
+    jellyfin = 994;
+  };
+  users.groups = lib.mapAttrs (_: gid: { inherit gid; }) {
+    cloudflare-archive = 981;
+    vault-history = 982;
+    hermes = 983;
+    servermon = 984;
+    vault = 985;
+    n8n = 986;
+    media = 993;
+  };
 
   services.jellyfin-backup.enable = true;
   services.vault-snapshot = {
