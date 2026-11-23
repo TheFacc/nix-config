@@ -45,10 +45,12 @@ in
     options = [ "fmask=0077" "dmask=0077" ];
   };
 
-  # Moved over from the old nixex (same disk, same UUID)
+  # Moved over from the old nixex (same disk, same UUID), now over USB. nofail: boot (and stay
+  # reachable) without it, e.g. before cutover or after a USB dropout
   fileSystems."/mnt/ssd512" = {
     device = "/dev/disk/by-uuid/c8b71c18-9ce1-4b44-b3bc-2a9d97131045";
     fsType = "ext4";
+    options = [ "defaults" "nofail" "x-systemd.device-timeout=10s" "x-systemd.mount-timeout=20s" ];
   };
 
   swapDevices = [ ];
