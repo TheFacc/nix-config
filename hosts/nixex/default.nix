@@ -6,10 +6,11 @@
 #
 ###############################################################
 
-{ inputs, lib, outputs, ... }: {
+{ inputs, lib, outputs, pkgs, ... }: {
   imports = [
     #################### Hardware Modules ####################
     inputs.hardware.nixosModules.common-cpu-intel
+    inputs.lanzaboote.nixosModules.lanzaboote # Secure Boot
    # inputs.hardware.nixosModules.common-gpu-intel
 
     #################### Required Configs ####################
@@ -118,13 +119,25 @@
     offsite.enable = true; # needs the `vaulthistory` crypt remote in rclone.conf, see module
   };
 
+  # Unattended reboot: the TPM releases the LUKS key only if PCR 7 (Secure Boot state
+  # and keys) matches, so it needs lanzaboote's signed boot chain. The passphrase stays
+  # as fallback. Enrollment and recovery: ./MIGRATION.md
   boot = {
     loader = {
-      systemd-boot.enable = true;
+      systemd-boot.enable = lib.mkForce false; # lanzaboote replaces it
       efi.canTouchEfiVariables = true;
       timeout = 3;
     };
+    lanzaboote = {
+      enable = true;
+      pkiBundle = "/var/lib/sbctl";
+    };
+    initrd.luks.devices."cryptroot" = {
+      crypttabExtraOpts = [ "tpm2-device=auto" ];
+      allowDiscards = true; # TRIM through LUKS for the NVMe
+    };
   };
+  environment.systemPackages = [ pkgs.sbctl ];
 
   nixpkgs.config = {
     allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) outputs.allowed-unfree-packages;

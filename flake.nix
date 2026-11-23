@@ -77,6 +77,12 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # Secure Boot (nixex: signed boot chain so the TPM can unlock LUKS unattended)
+    lanzaboote = {
+      url = "github:nix-community/lanzaboote/v1.2.0";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # Hermes Agent (NousResearch): own nixpkgs on purpose, their uv2nix build is CI-tested against it
     # Tier-2 Nix support, main can break: update deliberately with `nix flake update hermes-agent`
     hermes-agent = {
