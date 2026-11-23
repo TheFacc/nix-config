@@ -37,8 +37,8 @@ in
       { path = "/mnt/mediapool/mainet"; warnFreePercent = 5; critFreePercent = 2; minFreeGiB = 500; }
     ];
 
-    network.interfaces = [ "enp3s0" ];
-    power = { ac = "ADP1"; battery = "BAT1"; }; # /sys/class/power_supply on the Samsung
+    network.interfaces = [ "enp3s0" ]; # check `ip -br link` on install day
+    # power: first Mains/Battery in /sys/class/power_supply (the defaults)
 
     # sonarr/radarr/... are picked up automatically when enabled
     failureAlerts.extraServices = [ "tg-c2c" "flaresolverr" ]
@@ -52,8 +52,10 @@ in
       devices = [
         # USB bridge needs SAT passthrough; `removable` = don't die if it's unplugged at start
         { device = "/dev/disk/by-id/usb-Seagate_Expansion_HDD_00000000NT174VPM-0:0"; options = "-d removable -d sat"; }
-        { device = "/dev/disk/by-id/ata-Fanxiang_S101_512GB_AA000000000000063100"; } # /mnt/ssd512
-        { device = "/dev/disk/by-id/ata-KingDian_S280-120GB_2016052500037"; } # system
+        # /mnt/ssd512. In a USB enclosure its by-id changes: put the usb-... path from
+        # `ls -l /dev/disk/by-id` here on install day and add `-d sat`
+        { device = "/dev/disk/by-id/ata-Fanxiang_S101_512GB_AA000000000000063100"; options = "-d removable"; }
+        { device = "/dev/nvme0"; options = "-d nvme"; } # system
         # TODO 16TBb: add its /dev/disk/by-id/usb-... path once it's plugged in again
       ];
     };

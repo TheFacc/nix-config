@@ -1,7 +1,8 @@
 #############################################################
 #
 #  Nixex ~ Nix Plex - Home Theatre
-#  NixOS running on my old Samsung tank
+#  NixOS on the ex-nixook laptop (i3 13th gen), headless:
+#  Tailscale SSH, desktop on demand over RustDesk (see ./MIGRATION.md)
 #
 ###############################################################
 
@@ -18,7 +19,8 @@
     #################### Host-specific Optional Configs ####################
     # ../common/optional/services/openssh.nix # allow remote SSH access
 
-    ../common/optional/ui/plasma.nix # desktop environment
+    ../common/optional/ui/xfce.nix # desktop on demand: systemctl start display-manager
+    ../common/optional/services/rustdesk-host.nix # view that desktop over Tailscale
     ../common/optional/system/zram.nix
 #    ../common/optional/serverr/rclone.nix
 #     ../common/optional/system/pipewire.nix # audio
@@ -69,9 +71,7 @@
   # arrs.enable = true;
 #   boot.supportedFilesystems = ["ntfs"];
 
-  # Enable some basic X server options
   services.xserver = {
-    enable = true;
     xkb.layout = "it";
     xkb.variant = "";
   };
@@ -98,7 +98,7 @@
     enableIPv6 = true;
   };
 
-  # No sleep! -- not sure what is required here, but ALSO disable screen-off entirely from settings (#TODO declarative with plasma-manager)
+  # No sleep, lid closed included (screen blanking is off in xfce.nix)
   systemd.targets = {
     sleep.enable = false;
     suspend.enable = false;
@@ -106,7 +106,6 @@
     hybrid-sleep.enable = false;
   };
   powerManagement.enable = false;
-  services.displayManager.gdm.autoSuspend = false;
   services.logind.settings.Login = {
     HandleLidSwitch = "ignore";
   };
