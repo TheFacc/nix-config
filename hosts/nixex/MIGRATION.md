@@ -98,7 +98,8 @@ chown -R 1000:100 /mnt/home/facc
 reboot
 ```
 
-First boot asks for the LUKS passphrase. Log in as facc on the console, then:
+First boot asks for the LUKS passphrase, then reboots by itself once to set up Secure Boot (step 3).
+Enter the passphrase again, log in as facc on the console, then:
 
 ```sh
 sudo nmcli --ask device wifi connect '<ssid>'   # Wi-Fi only; prompts for the password
