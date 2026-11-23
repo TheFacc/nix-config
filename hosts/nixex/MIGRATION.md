@@ -83,6 +83,7 @@ units=(
   vaultsync.timer servermon-arr.timer vault-snapshot.timer vault-snapshot-offsite.timer
   cloudflare-archive.timer jellyfin-backup.timer
   vaultsync-on-change.path vault-save-request.path
+  vaultsync-on-change vault-save-request vault-snapshot-requested
   vaultsync vaultsync-watch-hermes vault-snapshot vault-snapshot-offsite cloudflare-archive jellyfin-backup
   hermes-agent hermes-backend vault-history-web telegram-bot-api tg-c2c n8n caddy
   plex tautulli jellyfin sonarr sonarr-dupsvc radarr radarr-dupsvc prowlarr qBittorrent flaresolverr
@@ -98,7 +99,7 @@ chown -R 1000:100 /mnt/home/facc
 reboot
 ```
 
-First boot asks for the LUKS passphrase, then reboots by itself once to set up Secure Boot (step 3).
+First boot asks for the LUKS passphrase, then reboots by itself once or twice to set up Secure Boot (step 3).
 Enter the passphrase again, log in as facc on the console, then:
 
 ```sh
@@ -114,8 +115,9 @@ again and would fight the old box for the bot tokens.
 ## 3. Secure Boot and TPM unlock
 
 lanzaboote provisions Secure Boot by itself. The install boots unsigned; on first boot it generates
-keys in `/var/lib/sbctl`, re-signs the ESP and reboots once (passphrase again). On that boot
-systemd-boot enrolls the keys (Microsoft's included) and Secure Boot starts enforcing.
+keys in `/var/lib/sbctl`, re-signs the ESP and reboots. On that boot systemd-boot enrolls the keys
+(Microsoft's included), the firmware may reset once more, then the passphrase prompt comes back and
+Secure Boot is enforcing.
 `/var/lib/sbctl` lives on `@`: don't wipe it, or the box can't sign new generations.
 
 Once it is back up:
@@ -145,7 +147,8 @@ h=facc@<new-ts-name>
 before=$(ssh $h cat /proc/sys/kernel/random/boot_id)
 ssh -t $h sudo reboot
 # give it a couple of minutes: nobody types the passphrase, the TPM must unlock the disk
-[ "$(ssh $h cat /proc/sys/kernel/random/boot_id)" != "$before" ] && echo REBOOTED
+after=$(ssh $h cat /proc/sys/kernel/random/boot_id)   # empty = not reachable yet: wait, retry
+[ -n "$after" ] && [ "$after" != "$before" ] && echo REBOOTED
 ssh $h systemctl is-system-running   # running; degraded means: systemctl --failed
 ssh -t $h '. ~/nixex-units.sh && sudo systemctl stop "${units[@]}"'
 ```
@@ -170,10 +173,12 @@ Connect from another RustDesk to the box's Tailscale name or IP.
 . ~/nixex-units.sh
 ssh root@nixex-old systemctl stop "${units[@]}" display-manager
 sudo systemctl stop "${units[@]}"
+ssh root@nixex-old systemctl is-active "${units[@]}" | grep -x active   # must print nothing
 ```
 
 The array expands locally, so both boxes get the same list. `root@` goes through Tailscale SSH;
-the default tailnet policy allows it. Units the old box lacks only print an error.
+the default tailnet policy allows it, but the first connection prints a check URL: open it and
+approve, then the command runs. Units the old box lacks only print an error.
 
 3. Check that both boxes give the same numbers to the same names. State is copied with
    `--numeric-ids`, so a mismatch hands files to the wrong account:
@@ -187,7 +192,7 @@ diff <(ssh root@nixex-old getent group | cut -d: -f1,3 | sort) <(getent group | 
    wpa_supplicant, geoclue, fwupd-refresh, systemd-oom, nscd, podman, resolvconf.
    Blocker: a different number for facc, media, plex, caddy, sonarr, radarr, syncthing or any
    account pinned in `hosts/nixex/default.nix`. Pin the old number there, rebuild with
-   `sudo nixos-rebuild switch --flake 'path:.#nixex'`, re-run the stop line and this check.
+   `sudo nixos-rebuild switch --flake 'path:/home/facc/dotfiles/nix-config#nixex'`, re-run the stop line and this check.
 
 4. Copy state, as root on the new box. n8n and prowlarr use DynamicUser, so their data is under `/var/lib/private`.
    `/var/lib/tailscale` is not copied: the new box keeps its own node and takes the name in 5.7.
@@ -198,7 +203,7 @@ sudo -i
 install -d -m 0700 /var/lib/private
 (
   for d in caddy hermes jellyfin obsidian-vault plex plexpy radarr sonarr servermon \
-           telegram-bot-api telegram-bot-api-secrets vault-history vault-snapshot vaultsync containers \
+           telegram-bot-api telegram-bot-api-secrets vault-history vault-snapshot vaultsync \
            private/n8n private/prowlarr; do
     rsync -aHAX --numeric-ids --delete --mkpath "root@nixex-old:/var/lib/$d/" "/var/lib/$d/" \
       || { echo "FAILED: $d"; exit 1; }
