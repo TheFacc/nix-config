@@ -141,8 +141,18 @@ sudo systemd-cryptenroll --wipe-slot=tpm2 --tpm2-device=auto --tpm2-pcrs=7 /dev/
 
 ## 4. Headless check and desktop on demand
 
-Set up RustDesk first (end of this step, it needs the laptop's screen). Then close the lid and,
-from another machine (zsh or bash):
+Desktop (LightDM logs facc into XFCE):
+
+```sh
+sudo systemctl start display-manager
+sudo systemctl stop display-manager
+```
+
+RustDesk, once, on the laptop's own screen with the desktop running:
+Settings > Security > enable "Direct IP access", set a permanent password.
+Connect from another RustDesk to the box's Tailscale name or IP.
+
+Then close the lid and, from another machine (zsh or bash):
 
 ```sh
 h=facc@<new-ts-name>
@@ -155,17 +165,6 @@ ssh $h systemctl is-system-running   # running; degraded means: systemctl --fail
 ssh -t $h '. ~/nixex-units.sh && sudo systemctl stop "${units[@]}"'
 ```
 
-Desktop (LightDM logs facc into XFCE):
-
-```sh
-sudo systemctl start display-manager
-sudo systemctl stop display-manager
-```
-
-RustDesk, once, on the laptop's own screen with the desktop running:
-Settings > Security > enable "Direct IP access", set a permanent password.
-Connect from another RustDesk to the box's Tailscale name or IP.
-
 ## 5. Cutover
 
 1. Tailscale admin console: rename the old machine `nixex` to `nixex-old`.
@@ -175,7 +174,8 @@ Connect from another RustDesk to the box's Tailscale name or IP.
 . ~/nixex-units.sh
 ssh root@nixex-old systemctl stop "${units[@]}" display-manager
 sudo systemctl stop "${units[@]}"
-ssh root@nixex-old systemctl is-active "${units[@]}" | grep -vxE 'inactive|failed'   # must print nothing
+ssh root@nixex-old "systemctl is-active ${units[*]} | grep -vxE 'inactive|failed' || echo ALL STOPPED"
+# must print exactly ALL STOPPED (nothing at all = ssh failed)
 ```
 
 The array expands locally, so both boxes get the same list. `root@` goes through Tailscale SSH;
@@ -199,7 +199,7 @@ diff <(ssh root@nixex-old getent group | cut -d: -f1,3 | sort) <(getent group | 
 
 ```sh
 sudo usermod -u <old-uid> <user>      # or: sudo groupmod -g <old-gid> <group>
-sudo find / -xdev -uid <new-uid> -exec chown -h <old-uid> {} +   # -gid / chgrp for a group
+sudo find / /home /var/log -xdev -uid <new-uid> -exec chown -h <old-uid> {} +   # -gid / chgrp for a group
 sudo nixos-rebuild switch --flake 'path:/home/facc/dotfiles/nix-config#nixex'
 ```
 
@@ -279,6 +279,9 @@ By hand:
   `sudo systemctl restart caddy`.
 - servermon sends its Telegram startup message.
 - The headless check from step 4 against `facc@nixex`, disks attached (skip its stop line).
+- USB dropout: unplug ssd512, then `systemctl is-active qBittorrent podman-tinyMediaManager`
+  shows both inactive. Plug it back in: within a minute `findmnt /mnt/ssd512` finds it and both are
+  active again by themselves.
 
 ## 7. Rollback
 
