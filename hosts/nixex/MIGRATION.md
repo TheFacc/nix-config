@@ -109,8 +109,9 @@ sudo tailscale up --ssh   # open the printed URL; the box joins as <new-ts-name>
 ip -br link               # update network.interfaces in services/servermon.nix if not enp3s0
 ```
 
-Until cutover, re-run the stop line after every boot (steps 3 and 4 reboot): the services start
-again and would fight the old box for the bot tokens.
+Until cutover, re-run the stop line after every boot (steps 3 and 4 reboot). Nothing can clash with
+the old box yet (the bot secrets only arrive with the copy in 5.4), but stopped services keep
+servermon from sending alerts and keep empty Syncthing/Plex/Jellyfin instances from writing state.
 
 ## 3. Secure Boot and TPM unlock
 
@@ -140,7 +141,8 @@ sudo systemd-cryptenroll --wipe-slot=tpm2 --tpm2-device=auto --tpm2-pcrs=7 /dev/
 
 ## 4. Headless check and desktop on demand
 
-Close the lid, then from another machine (zsh or bash):
+Set up RustDesk first (end of this step, it needs the laptop's screen). Then close the lid and,
+from another machine (zsh or bash):
 
 ```sh
 h=facc@<new-ts-name>
@@ -148,7 +150,7 @@ before=$(ssh $h cat /proc/sys/kernel/random/boot_id)
 ssh -t $h sudo reboot
 # give it a couple of minutes: nobody types the passphrase, the TPM must unlock the disk
 after=$(ssh $h cat /proc/sys/kernel/random/boot_id)   # empty = not reachable yet: wait, retry
-[ -n "$after" ] && [ "$after" != "$before" ] && echo REBOOTED
+[ -n "$before" ] && [ -n "$after" ] && [ "$after" != "$before" ] && echo REBOOTED
 ssh $h systemctl is-system-running   # running; degraded means: systemctl --failed
 ssh -t $h '. ~/nixex-units.sh && sudo systemctl stop "${units[@]}"'
 ```
@@ -173,7 +175,7 @@ Connect from another RustDesk to the box's Tailscale name or IP.
 . ~/nixex-units.sh
 ssh root@nixex-old systemctl stop "${units[@]}" display-manager
 sudo systemctl stop "${units[@]}"
-ssh root@nixex-old systemctl is-active "${units[@]}" | grep -x active   # must print nothing
+ssh root@nixex-old systemctl is-active "${units[@]}" | grep -vxE 'inactive|failed'   # must print nothing
 ```
 
 The array expands locally, so both boxes get the same list. `root@` goes through Tailscale SSH;
@@ -191,8 +193,17 @@ diff <(ssh root@nixex-old getent group | cut -d: -f1,3 | sort) <(getent group | 
    Fine: accounts that own nothing copied, such as sddm on the old box, lightdm on the new one,
    wpa_supplicant, geoclue, fwupd-refresh, systemd-oom, nscd, podman, resolvconf.
    Blocker: a different number for facc, media, plex, caddy, sonarr, radarr, syncthing or any
-   account pinned in `hosts/nixex/default.nix`. Pin the old number there, rebuild with
-   `sudo nixos-rebuild switch --flake 'path:/home/facc/dotfiles/nix-config#nixex'`, re-run the stop line and this check.
+   account pinned in `hosts/nixex/default.nix`. Pin the old number there (5.8 commits it).
+   NixOS won't change the ID of an account that already exists, so also change it by hand and
+   hand over what the new number already owns:
+
+```sh
+sudo usermod -u <old-uid> <user>      # or: sudo groupmod -g <old-gid> <group>
+sudo find / -xdev -uid <new-uid> -exec chown -h <old-uid> {} +   # -gid / chgrp for a group
+sudo nixos-rebuild switch --flake 'path:/home/facc/dotfiles/nix-config#nixex'
+```
+
+   Then re-run the stop line and this check.
 
 4. Copy state, as root on the new box. n8n and prowlarr use DynamicUser, so their data is under `/var/lib/private`.
    `/var/lib/tailscale` is not copied: the new box keeps its own node and takes the name in 5.7.
@@ -208,9 +219,13 @@ install -d -m 0700 /var/lib/private
     rsync -aHAX --numeric-ids --delete --mkpath "root@nixex-old:/var/lib/$d/" "/var/lib/$d/" \
       || { echo "FAILED: $d"; exit 1; }
   done
-  # whole home (tmm-config, rclone, syncthing identity, gh, TgC2C...); keeps the new nix-config checkout
+  # whole home (tmm-config, rclone, syncthing identity, gh, TgC2C...); keeps the new nix-config
+  # checkout and this box's Home Manager profile
   rsync -aHAX --numeric-ids --exclude=.cache/ --exclude=dotfiles/nix-config/ \
+    --exclude=.nix-profile --exclude=.local/state/nix/ --exclude=.local/state/home-manager/ \
     root@nixex-old:/home/facc/ /home/facc/ || { echo "FAILED: home"; exit 1; }
+  # the copy brought links into the old box's /nix/store (git config among them): relink
+  systemctl restart home-manager-facc || { echo "FAILED: home-manager"; exit 1; }
   echo "COPY OK"
 )
 exit   # back to facc
@@ -226,12 +241,15 @@ ssh root@nixex-old poweroff
 6. Move the disks: 16TB (USB), 16TBb, ssd512. The laptop has no 2.5" bay, so ssd512 goes into a
    USB enclosure and its by-id changes: in `services/servermon.nix` (smartd), replace its `ata-...`
    path with the `usb-...` one from `ls -l /dev/disk/by-id` and add `-d sat`.
-7. Tailscale admin console: rename `<new-ts-name>` to `nixex` (untick auto-generate).
-8. Commit the hardware config and any servermon fixes, then rebuild and reboot:
+7. Tailscale admin console: rename `<new-ts-name>` to `nixex` (untick auto-generate), disable its
+   key expiry (otherwise it drops off the tailnet in 180 days, and there's no other way in), and
+   give it any tags `nixex-old` has. The new box has its own SSH host keys, so on each machine that
+   connected to the old one: `ssh-keygen -R nixex` (and the `nixex.<tailnet>.ts.net` name if used).
+8. Commit the hardware config, any ID pins from 5.3 and the servermon fixes, then rebuild and reboot:
 
 ```sh
 cd /home/facc/dotfiles/nix-config
-git add hosts/nixex/hardware-configuration.nix hosts/common/optional/services/servermon.nix
+git add hosts/nixex/hardware-configuration.nix hosts/nixex/default.nix hosts/common/optional/services/servermon.nix
 git commit -m "chore(nixex): fill in the hardware config from install day"
 git push
 sudo nixos-rebuild boot --flake 'path:.#nixex' && sudo reboot
@@ -241,7 +259,7 @@ sudo nixos-rebuild boot --flake 'path:.#nixex' && sudo reboot
 
 ```sh
 systemctl --failed                    # empty
-systemctl list-timers                 # the 6 timers from step 5 are scheduled
+systemctl list-timers                 # the 6 timers from step 2 are scheduled
 for m in /mnt/media/16TB /mnt/media/16TBb /mnt/mediapool/mainet /mnt/ssd512; do
   findmnt "$m" >/dev/null || echo "MISSING $m"
 done                                  # prints nothing
