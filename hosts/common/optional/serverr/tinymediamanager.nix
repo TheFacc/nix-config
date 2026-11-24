@@ -14,7 +14,7 @@ in
     systemd.services."podman-${svcName}" = {
         after = [ "mnt-mediapool-mainet.mount" ];
         requires = [ "mnt-mediapool-mainet.mount" ];
-        wantedBy = [ "mnt-mediapool-mainet.mount" ]; # start again when the pool comes back
+        wantedBy = [ "mnt-mediapool-mainet.mount" "mnt-ssd512.mount" ]; # start again when either comes back
         unitConfig.RequiresMountsFor = [ "/mnt/ssd512" ]; # bind source below; may be nofail
     };
 

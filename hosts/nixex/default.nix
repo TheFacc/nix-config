@@ -114,12 +114,12 @@
   # ssd512 is nofail (USB enclosure), so nothing orders services after it: wait for it,
   # or qBittorrent writes its downloads into the empty mountpoint on the root disk.
   # After a USB dropout the services stop with the mount; plugging it back in mounts it
-  # and starts them again (same as the media pool in mediastorage.nix).
+  # and starts them again (same as the media pool in mediastorage.nix; tinyMediaManager's
+  # side is in its module).
   systemd.services.qBittorrent = {
     unitConfig.RequiresMountsFor = [ "/mnt/ssd512" ];
     wantedBy = [ "mnt-ssd512.mount" ];
   };
-  systemd.services.podman-tinyMediaManager.wantedBy = [ "mnt-ssd512.mount" ];
   services.udev.extraRules = ''
     ACTION=="add", SUBSYSTEM=="block", ENV{ID_FS_UUID}=="c8b71c18-9ce1-4b44-b3bc-2a9d97131045", TAG+="systemd", ENV{SYSTEMD_WANTS}+="mnt-ssd512.mount"
   '';
