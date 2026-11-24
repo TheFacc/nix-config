@@ -18,26 +18,26 @@ let
     id = "walls-all";
     label = "(sync) walls-all";
     type = "sendreceive";
-    devices = known [ "nixex" "nixossone" "nixook" "nixpad" ];
+    devices = known [ "nixex" "nixossone" "nixpad" ];
   };
   st_walls_desktop = {
     id = "walls-desktop";
     label = "(sync) walls-desktop";
     type = "sendreceive";
-    devices = known [ "nixex" "nixossone" "nixook" "nixpad" ];
+    devices = known [ "nixex" "nixossone" "nixpad" ];
   };
   st_walls_cell = {
     id = "walls-cell";
     label = "(sync) walls-cell";
     type = "sendreceive";
-    devices = known [ "nixex" "nixossone" "nixook" "nixpad" "Ultracc" ];
+    devices = known [ "nixex" "nixossone" "nixpad" "Ultracc" ];
   };
   # sync backups
   st_backuparr = {
     id = "backuparr";
     label = "(sync) backuparr";
     type = "sendreceive";
-    devices = known [ "nixex" "nixossone" "nixook" ];
+    devices = known [ "nixex" "nixossone" ];
   };
 
   # one-way
@@ -71,14 +71,6 @@ in
       folders = lib.mkMerge [
         # nixossone:
         (lib.mkIf (config.networking.hostName == "nixossone") {
-          "/home/${user}/Pictures/walls" = st_walls;
-          "/home/${user}/Pictures/walls/DesktopWallCopies" = st_walls_desktop;
-          "/home/${user}/Pictures/walls/CellWallCopies" = st_walls_cell;
-          "/home/${user}/Documents/_backuparr" = st_backuparr;
-          "/home/${user}/Pictures/_toPixel1" = st_toPixel1;
-        })
-        # nixook:
-        (lib.mkIf (config.networking.hostName == "nixook") {
           "/home/${user}/Pictures/walls" = st_walls;
           "/home/${user}/Pictures/walls/DesktopWallCopies" = st_walls_desktop;
           "/home/${user}/Pictures/walls/CellWallCopies" = st_walls_cell;
